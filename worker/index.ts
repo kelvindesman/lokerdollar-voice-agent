@@ -99,6 +99,7 @@ async function callMcp(
 ): Promise<unknown> {
 	const res = await fetch(env.LOKERDOLLAR_MCP_URL, {
 		method: "POST",
+		signal: AbortSignal.timeout(15_000),
 		headers: {
 			"content-type": "application/json",
 			accept: "application/json",

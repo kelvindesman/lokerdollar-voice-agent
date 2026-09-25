@@ -396,6 +396,11 @@ async function runTool(
 			highlight(known.rank);
 			renderCards();
 		}
+		// The browser already holds this job from the latest search: answer instantly
+		// (slow tool results are dropped by the agent), no network round trip.
+		if (known) {
+			return { ...forModel(known), applyButtonShownOnScreen: true };
+		}
 		const r = await postTool<{
 			job?: VoiceJob;
 			error?: string;
@@ -403,13 +408,11 @@ async function runTool(
 		}>("get_job", { job_id: id });
 		if (!r.job) {
 			return {
-				error: known
-					? `Job ${known.rank} (${known.title}) is no longer active. Suggest another job from the list.`
-					: `No job with id "${id}". Use an exact id from the latest search_jobs result.`,
+				error: `No job with id "${id}" is active. Use an exact id from the latest search_jobs result, or suggest another job from the list.`,
 			};
 		}
 		return {
-			...forModel({ ...r.job, rank: known?.rank ?? 0 }),
+			...forModel({ ...r.job, rank: 0 }),
 			applyButtonShownOnScreen: true,
 		};
 	}

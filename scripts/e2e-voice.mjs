@@ -72,7 +72,10 @@ const queue = []; // PCM buffers waiting to be streamed
 
 function flushTools() {
 	if (lastEvent !== "reply.done" || pending.length === 0) return;
-	for (const p of pending) ws.send(JSON.stringify({ type: "tool.result", ...p }));
+	for (const p of pending) {
+		if (process.env.DEBUG) log(">> tool.result", p.call_id, `${p.result.length} bytes`, p.result.slice(0, 200));
+		ws.send(JSON.stringify({ type: "tool.result", ...p }));
+	}
 	log(`→ tool.result x${pending.length}`);
 	pending = [];
 }
@@ -93,6 +96,9 @@ function emit(ev) {
 ws.onopen = () => ws.send(JSON.stringify(sessionUpdate("en")));
 ws.onmessage = async (m) => {
 	const ev = JSON.parse(String(m.data));
+	if (process.env.DEBUG && !["reply.audio", "transcript.agent.delta"].includes(ev.type)) {
+		log("<<", ev.type, JSON.stringify(ev).slice(0, 300));
+	}
 	switch (ev.type) {
 		case "session.ready":
 			ready = true;
@@ -112,6 +118,10 @@ ws.onmessage = async (m) => {
 			break;
 		case "input.speech.started":
 			lastEvent = ev.type;
+			log("speech.started");
+			break;
+		case "input.speech.stopped":
+			log("speech.stopped");
 			break;
 		case "reply.done":
 			lastEvent = ev.type;
@@ -123,6 +133,7 @@ ws.onmessage = async (m) => {
 			} else flushTools();
 			break;
 		case "tool.call": {
+			lastEvent = ev.type; // wait for the reply.done that follows this call
 			log("TOOL CALL:", ev.name, JSON.stringify(ev.arguments));
 			const r = await fetch(`${BASE}/api/tools/${ev.name}`, {
 				method: "POST",
@@ -160,12 +171,18 @@ ws.onmessage = async (m) => {
 ws.onclose = (e) => log("ws closed", e.code, e.reason);
 
 // ── real-time audio pump: speech from the queue, silence otherwise ──────────
-const silence = Buffer.alloc(CHUNK * 2);
+// Room tone instead of digital zeros: a real mic never sends exact silence,
+// and pure zeros make end-of-turn detection erratic in this harness.
+function roomTone() {
+	const b = Buffer.alloc(CHUNK * 2);
+	for (let i = 0; i < CHUNK; i++) b.writeInt16LE(Math.round((Math.random() * 2 - 1) * 40), i * 2);
+	return b;
+}
 let cur = null;
 let off = 0;
 const pump = setInterval(() => {
 	if (!ready || ws.readyState !== WebSocket.OPEN) return;
-	let chunk = silence;
+	let chunk = roomTone();
 	if (!cur && queue.length) {
 		cur = queue.shift();
 		off = 0;

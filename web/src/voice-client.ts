@@ -149,7 +149,11 @@ export class VoiceClient {
 				e: MessageEvent<{ pcm: ArrayBuffer; level: number }>,
 			) => {
 				this.on.level?.(this.muted ? 0 : e.data.level);
-				if (!this.isReady || this.muted || this.ws?.readyState !== WebSocket.OPEN)
+				if (
+					!this.isReady ||
+					this.muted ||
+					this.ws?.readyState !== WebSocket.OPEN
+				)
 					return;
 				this.ws.send(
 					JSON.stringify({ type: "input.audio", audio: toBase64(e.data.pcm) }),
@@ -222,16 +226,19 @@ export class VoiceClient {
 	sendText(text: string): void {
 		if (!this.isReady || this.ws?.readyState !== WebSocket.OPEN) return;
 		this.flushPlayback();
+		// Keep the text in history, and ALSO pass it in reply.create.instructions:
+		// measured, a bare reply.create after conversation.message sometimes answers
+		// with a generic intro instead of the typed request.
+		this.ws.send(JSON.stringify({ type: "conversation.message", role: "user", content: text }));
 		this.ws.send(
 			JSON.stringify({
-				type: "conversation.message",
-				role: "user",
-				content: text,
+				type: "reply.create",
+				instructions: `The user typed this instead of speaking: "${text.replace(/"/g, "'")}". Respond to it now, calling tools if needed.`,
 			}),
 		);
-		this.ws.send(JSON.stringify({ type: "reply.create" }));
 		this.setState("thinking");
 	}
+
 
 	private handle(ev: ServerEvent): void {
 		switch (ev.type) {
@@ -279,6 +286,9 @@ export class VoiceClient {
 				}
 				break;
 			case "tool.call":
+				// Close the gate: the result may only go out after the reply.done that
+				// FOLLOWS this call, never on a stale reply.done from an earlier turn.
+				this.lastEvent = ev.type;
 				void this.onToolCall(ev);
 				break;
 			case "session.error": {

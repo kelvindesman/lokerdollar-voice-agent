@@ -75,7 +75,9 @@ export const TOOLS = [
 			},
 		},
 		execution_mode: "interactive",
-		timeout_seconds: 20,
+		// Measured: a result sent later than ~half of timeout_seconds after the call is
+		// ignored and the agent apologises. 60 s keeps slow job searches (up to ~9 s) safe.
+		timeout_seconds: 60,
 	},
 	{
 		type: "function",
@@ -94,7 +96,9 @@ export const TOOLS = [
 			required: ["job_id"],
 		},
 		execution_mode: "interactive",
-		timeout_seconds: 20,
+		// Measured: a result sent later than ~half of timeout_seconds after the call is
+		// ignored and the agent apologises. 60 s keeps slow job searches (up to ~9 s) safe.
+		timeout_seconds: 60,
 	},
 ] as const;
 
