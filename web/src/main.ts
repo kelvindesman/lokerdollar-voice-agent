@@ -197,7 +197,7 @@ function renderCards() {
 			),
 		);
 		if (job.applicantRegion)
-			badges.append(el("span", { class: "badge region" }, job.applicantRegion));
+			badges.append(el("span", { class: "badge region" }, t.regionOnly(job.applicantRegion)));
 
 		const actions = el("div", { class: "actions" });
 		const apply = el(
@@ -370,6 +370,9 @@ async function runTool(
 			expandedRank = null;
 			speechWindow = [];
 			renderCards();
+			if (client.active && window.matchMedia("(max-width: 880px)").matches) {
+				document.getElementById("jobs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+			}
 			meta.textContent =
 				(lastQuery
 					? t.resultsFor(lastQuery, r.jobs.length)
@@ -495,3 +498,14 @@ document.addEventListener("keydown", (e) => {
 });
 
 applyLang();
+
+// Shareable results: /?q=react pre-fills the job list without starting a call.
+const initialQuery = new URLSearchParams(location.search)
+	.get("q")
+	?.trim()
+	.slice(0, 60);
+if (initialQuery) {
+	void runTool("search_jobs", { query: initialQuery }).catch(() => {
+		meta.textContent = "";
+	});
+}

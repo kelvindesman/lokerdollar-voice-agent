@@ -26,6 +26,8 @@ const TOKEN_TTL_SECONDS = 60;
 const MAX_SESSION_SECONDS = 600;
 /** Max jobs returned to the agent + UI per search. */
 const MAX_RESULTS = 6;
+/** applicant_region values an Indonesia-based applicant can still take. */
+const OPEN_REGIONS = /worldwide|global|anywhere|apac|asia|indonesia|sea/i;
 
 // ── tiny per-isolate guards (no KV/D1 by design) ─────────────────────────────
 
@@ -228,7 +230,8 @@ async function searchJobs(request: Request, env: Env): Promise<Response> {
 		i,
 		s:
 			(r.payMin != null || r.payMax != null ? 2 : 0) +
-			(r.indonesiaEligibility === "id_friendly" ? 1 : 0),
+			(r.indonesiaEligibility === "id_friendly" ? 1 : 0) -
+			(r.applicantRegion && !OPEN_REGIONS.test(r.applicantRegion) ? 3 : 0),
 	}));
 	scored.sort((a, b) => b.s - a.s || a.i - b.i);
 	const jobs = scored

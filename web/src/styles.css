@@ -25,6 +25,10 @@
 	box-sizing: border-box;
 }
 
+[hidden] {
+	display: none !important;
+}
+
 html,
 body {
 	margin: 0;
@@ -634,7 +638,8 @@ a {
 	color: #0b5a2d;
 }
 
-.badge.restricted {
+.badge.restricted,
+.badge.region {
 	background: #ffe1db;
 	color: #8a2415;
 }
