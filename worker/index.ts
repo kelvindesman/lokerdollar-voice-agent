@@ -170,9 +170,15 @@ async function mintToken(request: Request, env: Env): Promise<Response> {
 		"max_session_duration_seconds",
 		String(MAX_SESSION_SECONDS),
 	);
-	const res = await fetch(url, {
+	// Docs show both "Bearer <key>" (token endpoint) and a bare key (REST); try both.
+	let res = await fetch(url, {
 		headers: { Authorization: `Bearer ${env.ASSEMBLYAI_API_KEY}` },
 	});
+	if (res.status === 401) {
+		res = await fetch(url, {
+			headers: { Authorization: env.ASSEMBLYAI_API_KEY },
+		});
+	}
 	if (!res.ok) {
 		// Status only; the body could echo request details.
 		return json({ error: "token_upstream", status: res.status }, 502);
