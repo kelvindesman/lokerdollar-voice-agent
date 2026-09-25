@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>LokerDollar Voice slides</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+	@page { size: 1920px 1080px; margin: 0; }
+	:root { --bg:#0c1a14; --bg2:#10241b; --line:#24473a; --ink:#eef6ef; --ink2:#b5cabd; --ink3:#83a092; --green:#3ddc84; --gi:#062414; --amber:#f5c451; --paper:#f7f3e8; --pi:#16241d; }
+	* { box-sizing: border-box; }
+	html, body { margin:0; background:var(--bg); }
+	body { font-family: Inter, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+	.s { width:1920px; height:1080px; padding:96px 120px; position:relative; overflow:hidden; page-break-after: always; break-after: page;
+		background: radial-gradient(1100px 650px at 0% -10%, #1d4532 0%, transparent 60%), var(--bg); display:flex; flex-direction:column; }
+	.s:last-child { page-break-after: auto; break-after: auto; }
+	.kick { font:700 22px Inter; letter-spacing:.14em; text-transform:uppercase; color:var(--green); margin:0 0 18px; }
+	h1 { font:800 120px/0.98 'Bricolage Grotesque'; letter-spacing:-.035em; margin:0; }
+	h2 { font:800 76px/1.02 'Bricolage Grotesque'; letter-spacing:-.03em; margin:0 0 48px; max-width:1500px; }
+	h2 span, h1 span { color: var(--green); }
+	p, li { font-size:32px; line-height:1.45; color:var(--ink2); }
+	.foot { position:absolute; left:120px; right:120px; bottom:48px; display:flex; justify-content:space-between; font-size:20px; color:var(--ink3); }
+	.brand { display:flex; align-items:center; gap:16px; font:700 30px 'Bricolage Grotesque'; color:var(--ink); }
+	.mark { width:56px; height:56px; border-radius:16px; background:var(--green); color:var(--gi); display:grid; place-items:center; font:800 34px 'Bricolage Grotesque'; }
+	.grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:32px; }
+	.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:start; }
+	.box { background:var(--bg2); border:1px solid var(--line); border-radius:28px; padding:40px; }
+	.box h3 { font:700 36px/1.15 'Bricolage Grotesque'; margin:0 0 16px; color:var(--ink); }
+	.box p { font-size:27px; margin:0; }
+	.num { font:800 150px/1 'Bricolage Grotesque'; letter-spacing:-.04em; color:var(--green); }
+	.num.amber { color: var(--amber); }
+	.cap { font-size:26px; color:var(--ink2); margin-top:10px; }
+	.shot { width:100%; border-radius:24px; border:1px solid var(--line); box-shadow:0 30px 80px -20px rgba(0,0,0,.6); }
+	.dlg { display:flex; flex-direction:column; gap:18px; }
+	.b { border-radius:20px; padding:16px 24px; font-size:26px; line-height:1.4; }
+	.b small { display:block; font:700 14px Inter; letter-spacing:.1em; text-transform:uppercase; opacity:.7; }
+	.u { background:var(--bg2); border:1px solid var(--line); align-self:flex-end; }
+	.a { background:rgba(61,220,132,.12); border:1px solid rgba(61,220,132,.3); align-self:flex-start; }
+	.t { font:700 18px Inter; color:var(--amber); letter-spacing:.06em; text-transform:uppercase; align-self:center; }
+	table { border-collapse:collapse; width:100%; font-size:26px; }
+	td { padding:16px 0; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink2); }
+	td:first-child { color:var(--ink); font-weight:700; width:430px; padding-right:28px; }
+	code { font-family: ui-monospace, Menlo, monospace; font-size:.9em; color:var(--green); }
+	.arch { display:flex; align-items:center; gap:22px; margin-bottom:40px; }
+	.node { background:var(--paper); color:var(--pi); border-radius:22px; padding:24px 28px; font:700 27px/1.25 'Bricolage Grotesque'; text-align:center; flex:1; }
+	.node small { display:block; font:500 19px Inter; color:#4b5d53; margin-top:6px; }
+	.node.g { background:var(--green); color:var(--gi); }
+	.node.g small { color:#0b4a2a; }
+	.arrow { font:800 40px Inter; color:var(--ink3); }
+	ul { margin:0; padding-left:34px; }
+	li { margin-bottom:14px; }
+	li b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- 1. Title -->
+<section class="s" style="justify-content:center">
+	<div class="brand"><span class="mark">$</span>LokerDollar Voice</div>
+	<h1 style="margin-top:48px">Talk your way to a<br /><span>dollar-paying</span> remote job.</h1>
+	<p style="max-width:1300px; margin-top:40px">A real-time voice agent that searches live remote jobs for Indonesian workers, reads the best matches aloud, answers follow-ups, and lets you cut in at any time.</p>
+	<div class="foot"><span>AssemblyAI Voice Agent Hackathon · lablab.ai · September 2026</span><span>lokerdollar-voice-agent.kelvin-6d2.workers.dev</span></div>
+</section>
+
+<!-- 2. Problem -->
+<section class="s">
+	<p class="kick">The problem</p>
+	<h2>Remote dollar jobs can pay Indonesians <span>~7×</span> the local wage. Finding one is the hard part.</h2>
+	<div class="grid2" style="margin-bottom:44px">
+		<div class="box"><div class="num amber">Rp 5.4M</div><div class="cap">Jakarta monthly minimum wage (UMP DKI 2025)</div></div>
+		<div class="box"><div class="num">≈ Rp 40M</div><div class="cap">A remote support job at $15/hour, per month (160 h × Rp 16,500/USD)</div></div>
+	</div>
+	<div class="grid3">
+		<div class="box"><h3>Boards built for the US/EU</h3><p>"Remote" often means "remote, US only". Eligibility is hidden in the fine print.</p></div>
+		<div class="box"><h3>Pay in the wrong units</h3><p>"$85k a year" means little until it becomes "about Rp 117 million a month".</p></div>
+		<div class="box"><h3>Typing English filters is a barrier</h3><p>People think in Bahasa and mix in English: "cari kerja remote React yang bayar dolar".</p></div>
+	</div>
+</section>
+
+<!-- 3. Demo -->
+<section class="s">
+	<p class="kick">Demo</p>
+	<h2>Say it. Hear the top three. Say <span>"the second one"</span>.</h2>
+	<div class="grid2" style="grid-template-columns: 1.25fr 1fr">
+		<img class="shot" src="app.png" alt="LokerDollar Voice with live customer support jobs" />
+		<div class="dlg">
+			<div class="b u"><small>You</small>Find me remote customer support jobs that pay in dollars</div>
+			<div class="t">→ tool.call search_jobs("customer support")</div>
+			<div class="b a"><small>Loker</small>Number one, Customer Support Specialist at Flipturn, 75 to 115 thousand US dollars a year…</div>
+			<div class="b u"><small>You</small>Tell me more about the second one</div>
+			<div class="t">→ tool.call get_job(id of #2)</div>
+			<div class="b a"><small>Loker</small>…about 44 million rupiah a month. The Apply button is on your screen.</div>
+		</div>
+	</div>
+</section>
+
+<!-- 4. How it uses AssemblyAI -->
+<section class="s">
+	<p class="kick">How it uses AssemblyAI</p>
+	<h2>One Voice Agent WebSocket: <span>STT, LLM, TTS, turns, tools.</span></h2>
+	<div class="arch">
+		<div class="node">Browser<small>mic → PCM16 24 kHz · captions · cards</small></div>
+		<div class="arrow">⇄</div>
+		<div class="node g">AssemblyAI Voice Agent API<small>Universal-3.5 Pro STT · LLM · voice "jane"</small></div>
+		<div class="arrow">⇄</div>
+		<div class="node">Cloudflare Worker<small>temp tokens · tool proxy</small></div>
+		<div class="arrow">→</div>
+		<div class="node">LokerDollar MCP<small>live job database</small></div>
+	</div>
+	<table>
+		<tr><td>Temporary tokens</td><td>Worker mints a single-use token (60 s, 10-min session cap). The API key never reaches the browser.</td></tr>
+		<tr><td>Client-side function tools</td><td><code>search_jobs</code> and <code>get_job</code> in interactive mode. <code>tool.result</code> is sent exactly when <code>reply.done</code> is the latest event.</td></tr>
+		<tr><td>Barge-in</td><td>On <code>reply.done: interrupted</code> the client drops queued audio and stale tool results immediately.</td></tr>
+		<tr><td>Key terms + transcription prompt</td><td>Biases recognition toward React, Figma, Shopify and "cari kerja", "lowongan", "gaji".</td></tr>
+		<tr><td>Word-level agent transcript</td><td><code>transcript.agent.delta</code> lights up the card the agent is talking about.</td></tr>
+	</table>
+</section>
+
+<!-- 5. Real-time UX details -->
+<section class="s">
+	<p class="kick">What makes it feel live</p>
+	<h2>Voice and screen <span>move together.</span></h2>
+	<div class="grid3">
+		<div class="box"><h3>Cards before speech</h3><p>Tools run in the browser, so the job cards appear as the agent says "let me check", before it reads the results.</p></div>
+		<div class="box"><h3>The card follows the voice</h3><p>When the agent says "number two" or a company name, that card lights up in time with the audio.</p></div>
+		<div class="box"><h3>Tap or talk, one context</h3><p><b>Ask about this</b> on a card and typed messages go into the same conversation (<code>conversation.message</code> + <code>reply.create</code>).</p></div>
+		<div class="box"><h3>Rupiah, not just dollars</h3><p>Every job shows a monthly IDR estimate, and the agent says it: "about 131 million rupiah a month".</p></div>
+		<div class="box"><h3>Honest eligibility</h3><p>Open to Indonesia, not stated, or region-locked. "LATAM applicants only" is flagged and ranked lower.</p></div>
+		<div class="box"><h3>No links read aloud</h3><p>URLs are removed before the model sees results, so it cannot make up a link. Apply links come from the API unchanged.</p></div>
+	</div>
+</section>
+
+<!-- 6. Business value -->
+<section class="s">
+	<p class="kick">Business value</p>
+	<h2>A voice front door to a <span>real, live</span> job marketplace.</h2>
+	<div class="grid3" style="margin-bottom:40px">
+		<div class="box"><div class="num">~4,800</div><div class="cap">open remote jobs filtered for Indonesian applicants</div></div>
+		<div class="box"><div class="num">~1,300</div><div class="cap">hiring companies worldwide</div></div>
+		<div class="box"><div class="num amber" style="font-size:112px">$500–$45.8k</div><div class="cap">monthly USD salary range observed</div></div>
+	</div>
+	<ul>
+		<li><b>Live data, not a mock.</b> Every answer comes from LokerDollar's production job database through its public MCP server (figures from lokerdollar.com/llms.txt, 2026-09-25).</li>
+		<li><b>Lower barrier, wider funnel.</b> People who would not type an English search can simply ask. Each spoken request ends at a real Apply link on LokerDollar.</li>
+		<li><b>Same agent, more channels.</b> The Voice Agent API also connects over SIP, so a phone number for workers without a laptop is a configuration change, not a rebuild.</li>
+	</ul>
+</section>
+
+<!-- 7. Roadmap -->
+<section class="s">
+	<p class="kick">Roadmap</p>
+	<h2>From job search to <span>getting hired.</span></h2>
+	<div class="grid2">
+		<ul>
+			<li><b>Native Bahasa Indonesia</b> speech in and out, once AssemblyAI adds Indonesian (today: mixed-language input understood, simple-English replies).</li>
+			<li><b>Phone line</b> through AssemblyAI SIP + Twilio, for workers without a laptop.</li>
+			<li><b>Interview practice mode:</b> the same agent runs a mock screening call for the job you picked.</li>
+		</ul>
+		<ul>
+			<li><b>Saved shortlists</b> and "call me when a match appears" alerts.</li>
+			<li><b>Full job details</b> behind LokerDollar's keyed API tier.</li>
+			<li><b>Employer side:</b> a voice pre-screen that sends shortlisted candidates to employers.</li>
+		</ul>
+	</div>
+	<div class="foot"><span class="brand" style="font-size:24px"><span class="mark" style="width:40px;height:40px;font-size:24px;border-radius:12px">$</span>Try it: lokerdollar-voice-agent.kelvin-6d2.workers.dev</span><span>github.com/kelvindesman/lokerdollar-voice-agent</span></div>
+</section>
+
+</body>
+</html>
