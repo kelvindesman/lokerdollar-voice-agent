@@ -16,7 +16,7 @@ Millions of Indonesian developers, designers, writers, and support staff could w
 2. **Salary is in a currency and pay period nobody here thinks in.** "$85k a year" means little until it becomes "about Rp 117 million a month".
 3. **Typing English search queries is a barrier.** Many capable workers think in Bahasa Indonesia and mix in English terms ("cari kerja remote React yang bayar dolar"). Speaking is easier than filling in filters.
 
-LokerDollar already collects and filters remote jobs for Indonesian applicants: about 4,800 open listings from about 1,300 employers, with salaries observed from $500 to $45,833 a month (source: [lokerdollar.com/llms.txt](https://lokerdollar.com/llms.txt), 2026-09-25). This project puts a voice on top of that database.
+LokerDollar already collects and filters remote jobs for Indonesian applicants: about 4,800 open listings from about 1,300 employers, with salaries observed from $500 to $45,833 a month (source: [lokerdollar.com/llms.txt](https://lokerdollar.com/llms.txt), 2026-09-25), drawn from 29,000+ postings indexed since launch. This project puts a voice on top of that database.
 
 ## What it does
 
