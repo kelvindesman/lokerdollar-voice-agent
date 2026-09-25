@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>LokerDollar Voice cover</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+	:root { --bg:#0c1a14; --line:#24473a; --ink:#eef6ef; --ink2:#b5cabd; --green:#3ddc84; --gi:#062414; --paper:#f7f3e8; --pi:#16241d; --pi2:#4b5d53; }
+	* { box-sizing: border-box; }
+	html, body { margin:0; }
+	body { width:1920px; height:1080px; overflow:hidden; font-family:Inter, sans-serif; color:var(--ink);
+		background: radial-gradient(1200px 700px at 10% -10%, #1f4a35 0%, transparent 60%), radial-gradient(900px 600px at 105% 110%, #1a3a2a 0%, transparent 60%), var(--bg);
+		display:grid; grid-template-columns: 1fr 820px; gap:60px; padding:110px 120px; }
+	.left { display:flex; flex-direction:column; justify-content:center; }
+	.brand { display:flex; align-items:center; gap:18px; font:700 34px 'Bricolage Grotesque'; }
+	.mark { width:64px; height:64px; border-radius:18px; background:var(--green); color:var(--gi); display:grid; place-items:center; font:800 40px 'Bricolage Grotesque'; }
+	.brand em { font-style:normal; color:var(--green); }
+	h1 { font:800 104px/0.98 'Bricolage Grotesque'; letter-spacing:-0.035em; margin:44px 0 28px; }
+	h1 span { color:var(--green); }
+	.sub { font-size:32px; line-height:1.4; color:var(--ink2); max-width:840px; margin:0; }
+	.pills { display:flex; gap:14px; margin-top:48px; flex-wrap:wrap; }
+	.pill { border:1px solid var(--line); background:#10241b; border-radius:999px; padding:14px 24px; font:600 22px Inter; color:var(--ink); }
+	.pill b { color:var(--green); }
+	.right { display:flex; flex-direction:column; gap:22px; justify-content:center; }
+	.bubble { border-radius:22px; padding:20px 26px; font-size:25px; line-height:1.4; max-width:92%; }
+	.bubble small { display:block; font:600 14px Inter; letter-spacing:.1em; text-transform:uppercase; opacity:.7; margin-bottom:4px; }
+	.u { align-self:flex-end; background:#10241b; border:1px solid var(--line); }
+	.a { align-self:flex-start; background:rgba(61,220,132,.12); border:1px solid rgba(61,220,132,.3); }
+	.card { display:grid; grid-template-columns:76px 1fr; gap:22px; background:var(--paper); color:var(--pi); border-radius:26px; padding:24px 26px; border:3px solid transparent; }
+	.card.on { border-color:var(--green); box-shadow:0 0 0 10px rgba(61,220,132,.18); }
+	.rank { width:76px; height:76px; border-radius:20px; background:var(--pi); color:var(--paper); display:grid; place-items:center; font:800 38px 'Bricolage Grotesque'; }
+	.on .rank { background:var(--green); color:var(--gi); }
+	.t { font:700 28px/1.2 'Bricolage Grotesque'; margin:0; }
+	.c { color:var(--pi2); font-size:20px; margin:4px 0 10px; }
+	.p { font-size:24px; display:flex; gap:12px; align-items:baseline; }
+	.idr { font-size:19px; background:#fbe9b8; color:#7a5a00; border-radius:8px; padding:2px 10px; }
+	.orb { position:absolute; left:1030px; top:112px; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #fff, #d9f7e5 55%, #a6e8c2); box-shadow:0 0 0 18px rgba(61,220,132,.15), 0 0 0 40px rgba(61,220,132,.07); }
+</style>
+</head>
+<body>
+	<div class="left">
+		<div class="brand"><span class="mark">$</span><span>LokerDollar <em>Voice</em></span></div>
+		<h1>Talk your way to a <span>dollar-paying</span> remote job.</h1>
+		<p class="sub">A real-time voice agent that searches live remote jobs for Indonesian workers, answers follow-ups, and handles interruptions.</p>
+		<div class="pills">
+			<span class="pill"><b>AssemblyAI</b> Voice Agent API</span>
+			<span class="pill">Live data · ~4,800 open jobs</span>
+			<span class="pill">Barge-in · tool calls</span>
+		</div>
+	</div>
+	<div class="right">
+		<div class="bubble u"><small>You</small>Cari kerja remote customer support yang bayar dolar</div>
+		<div class="bubble a"><small>Loker</small>Number one is Customer Support Specialist at Flipturn, 75 to 115 thousand dollars a year…</div>
+		<div class="card on"><span class="rank">1</span><div><p class="t">Customer Support Specialist</p><p class="c">Flipturn</p><p class="p"><b>$75k–$115k / yr</b><span class="idr">≈ Rp 131M / month</span></p></div></div>
+		<div class="card"><span class="rank">2</span><div><p class="t">CPC Processor Customer Support</p><p class="c">TalentHop</p><p class="p"><b>$15–$18 / hr</b><span class="idr">≈ Rp 44M / month</span></p></div></div>
+	</div>
+</body>
+</html>
