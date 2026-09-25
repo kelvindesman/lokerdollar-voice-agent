@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>LokerDollar Voice</title>
+		<meta
+			name="description"
+			content="A voice agent that finds remote, USD-paying jobs for Indonesian workers. Speak, interrupt, and apply. Built on the AssemblyAI Voice Agent API with live LokerDollar job data."
+		/>
+		<meta name="theme-color" content="#0c1a14" />
+		<meta property="og:title" content="LokerDollar Voice" />
+		<meta property="og:description" content="Talk to find remote jobs that pay in US dollars." />
+		<meta property="og:image" content="/og.png" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<a class="skip" href="#jobs">Skip to jobs</a>
+		<header class="top">
+			<div class="brand">
+				<span class="brand-mark" aria-hidden="true">$</span>
+				<span class="brand-name">LokerDollar <em>Voice</em></span>
+			</div>
+			<div class="lang" role="group" aria-label="Language">
+				<button type="button" data-lang="en" aria-pressed="true">EN</button>
+				<button type="button" data-lang="id" aria-pressed="false">ID</button>
+			</div>
+		</header>
+
+		<main class="layout">
+			<section class="call" aria-labelledby="call-title">
+				<h1 id="call-title" class="tagline" data-i18n="tagline"></h1>
+
+				<div class="stage" data-state="idle">
+					<button type="button" class="orb" id="orb" aria-describedby="status">
+						<span class="orb-ring" aria-hidden="true"></span>
+						<span class="orb-core" aria-hidden="true">
+							<svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true">
+								<path
+									fill="currentColor"
+									d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"
+								/>
+							</svg>
+						</span>
+						<span class="orb-label" id="orb-label"></span>
+					</button>
+					<p class="status" id="status" role="status" aria-live="polite"></p>
+					<div class="controls">
+						<button type="button" class="btn ghost" id="mute" hidden></button>
+					</div>
+				</div>
+
+				<div class="transcript" id="transcript" aria-live="polite" aria-label="Conversation"></div>
+
+				<div class="examples" id="examples">
+					<span class="examples-label" data-i18n="tryLabel"></span>
+					<ul id="example-list"></ul>
+				</div>
+
+				<form class="typebox" id="typebox" autocomplete="off">
+					<label class="sr-only" for="typed" data-i18n="typePlaceholder"></label>
+					<input id="typed" name="typed" type="text" maxlength="200" />
+					<button type="submit" class="btn" data-i18n="send"></button>
+				</form>
+				<p class="fine" data-i18n="micNote"></p>
+			</section>
+
+			<section class="results" id="jobs" aria-labelledby="results-title">
+				<div class="results-head">
+					<h2 id="results-title" data-i18n="resultsTitle"></h2>
+					<p class="results-meta" id="results-meta" aria-live="polite"></p>
+				</div>
+				<ol class="cards" id="cards"></ol>
+				<p class="empty" id="empty" data-i18n="resultsEmpty"></p>
+				<p class="fine" id="rate-note" data-i18n="rateNote" hidden></p>
+			</section>
+		</main>
+
+		<footer class="foot">
+			<span data-i18n="poweredBy"></span>
+			<a href="https://github.com/kelvindesman/lokerdollar-voice-agent" rel="noopener">Source</a>
+		</footer>
+
+		<script type="module" src="/src/main.ts"></script>
+	</body>
+</html>

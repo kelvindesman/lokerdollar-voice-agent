@@ -1,0 +1,23 @@
+{
+	"name": "lokerdollar-voice-agent",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Voice job-hunt agent for Indonesian workers seeking remote USD-paying jobs. AssemblyAI Voice Agent API + LokerDollar live job data on Cloudflare Workers.",
+	"license": "MIT",
+	"scripts": {
+		"dev": "vite build && wrangler dev --port 8787",
+		"build": "vite build",
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p worker/tsconfig.json",
+		"test": "node --test scripts/*.test.mjs",
+		"deploy": "vite build && wrangler deploy",
+		"e2e:voice": "node scripts/e2e-voice.mjs"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20250906.0",
+		"typescript": "^5.9.2",
+		"vite": "^7.1.5",
+		"wrangler": "^4.35.0"
+	},
+	"packageManager": "pnpm@10.33.0"
+}
