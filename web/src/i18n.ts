@@ -21,6 +21,9 @@ const en = {
 		"Tell me more about the second one",
 	],
 	resultsTitle: "Jobs",
+	step1: "Tap the mic and say the job you want.",
+	step2: "Loker searches ~4,800 live remote jobs open to Indonesians.",
+	step3: "Say “tell me more about number two”, or interrupt any time.",
 	resultsEmpty:
 		"Jobs you ask about will appear here, numbered so you can say “tell me about number two”.",
 	searchingFor: (q: string) => `Searching live LokerDollar jobs for “${q}”…`,
@@ -71,6 +74,9 @@ const id: Strings = {
 		"Tell me more about nomor dua",
 	],
 	resultsTitle: "Lowongan",
+	step1: "Tekan mic dan sebutkan pekerjaan yang kamu cari.",
+	step2: "Loker mencari ~4.800 lowongan remote aktif yang terbuka untuk Indonesia.",
+	step3: "Bilang “nomor dua” untuk detail, atau potong kapan saja.",
 	resultsEmpty:
 		"Lowongan akan muncul di sini, bernomor, jadi kamu bisa bilang “nomor dua”.",
 	searchingFor: (q: string) => `Mencari lowongan LokerDollar untuk “${q}”…`,
