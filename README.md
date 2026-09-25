@@ -100,8 +100,9 @@ web/src/voice-client.ts  Voice Agent WebSocket client: audio in/out, barge-in, t
 web/src/main.ts          UI: captions, cards, following the agent's speech, EN/ID
 web/public/pcm-capture.js AudioWorklet: resample to 24 kHz PCM16, 50 ms chunks
 scripts/e2e-voice.mjs    Scripted voice test (macOS `say` → real Voice Agent session → real jobs)
+scripts/e2e-browser.mjs  Headless Chrome with a fake microphone driving the deployed app
 scripts/jobs.test.mjs    Unit tests for job shaping
-submission/              Cover image, slides, video script, lablab form copy
+submission/              Cover image, slides, in-call screenshots, video script, lablab form copy
 ```
 
 ## Run it yourself
@@ -124,11 +125,30 @@ pnpm deploy
 Tests:
 
 ```bash
-pnpm test                                            # unit tests
-BASE=http://localhost:8787 pnpm e2e:voice            # real voice session driven by synthesized speech (macOS)
+pnpm test                                                        # unit tests (job shaping)
+BASE=http://localhost:8787 pnpm e2e:voice                        # scripted voice session (macOS `say`)
+node scripts/e2e-browser.mjs <url> mic.wav out/ 100000           # headless Chrome with a fake microphone
 ```
 
-The e2e script makes spoken prompts with macOS `say` and streams them in real time to a real Voice Agent session, using the same `session.update` as the web app. It runs the tools against the Worker and checks that (1) a spoken request returns real jobs, (2) "tell me more about the second one" triggers `get_job`, and (3) cutting in while the agent talks interrupts it.
+- **`e2e:voice`** turns spoken prompts made with macOS `say` into 24 kHz PCM and streams them in real time to a real Voice Agent session, using the same `session.update` as the web app. It runs the tools against the Worker and checks that (1) a spoken request returns real jobs, (2) "tell me more about the second one" triggers `get_job`, and (3) cutting in while the agent talks interrupts it. Set `DEBUG=1` for a full event log.
+- **`e2e-browser.mjs`** runs the actual web app in headless Chrome with `--use-file-for-fake-audio-capture`, so the whole browser path (AudioWorklet capture, playback, tool calls, cards) is exercised.
+
+## Testing results (2026-09-26, against the deployed Worker)
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| `/api/token` mints a Voice Agent token | Pass | HTTP 200 from the page's own origin; 403 without it |
+| Spoken search returns real jobs | Pass | Last 6 scripted sessions: `search_jobs("customer support")` → 5 live jobs read aloud |
+| "Tell me more about the second one" → `get_job` | Pass | 6/6 sessions called `get_job` with job #2's id |
+| Barge-in stops the agent | Pass (server decides) | `reply.done status=interrupted`, caption trimmed to what was spoken, new search follows. Triggered in 5 of 6 scripted runs and in the browser run; when it didn't trigger, the synthetic "wait, stop" was recognized only after the agent finished |
+| Full browser path with fake mic | Pass | Cards render, card highlight follows the agent's voice, card #2 expands with a green Apply button ([screens](submission/screens)) |
+
+Bugs these tests found and fixed:
+
+1. **Only the first 50 ms of mic audio was sent.** The AudioWorklet sized each new chunk from the previous one, but that buffer had been transferred (detached, length 0). Found by the browser test (1 chunk in 3 s; 60 after the fix).
+2. **Late tool results were ignored.** Measured with controlled delays: with `timeout_seconds: 20`, a result sent 11 s after the call was dropped and the agent apologised; with `timeout_seconds: 60`, a 12 s result was accepted. Tools now use 60 s. `get_job` answers from jobs already on screen, and the Worker caps the upstream fetch at 15 s.
+3. **Stale `reply.done` gate.** A `tool.result` could be released by an earlier turn's `reply.done`. A `tool.call` now closes the gate until the `reply.done` that follows it.
+4. **Typed input sometimes ignored.** `conversation.message` plus a bare `reply.create` sometimes produced a generic intro. The typed text is now also passed in `reply.create.instructions`.
 
 ## Job data
 

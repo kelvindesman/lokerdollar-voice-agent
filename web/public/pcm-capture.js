@@ -5,7 +5,8 @@ class PcmCapture extends AudioWorkletProcessor {
 		super();
 		const { inputSampleRate, targetSampleRate } = options.processorOptions;
 		this.ratio = inputSampleRate / targetSampleRate;
-		this.chunk = new Int16Array(Math.round(targetSampleRate * 0.05));
+		this.size = Math.round(targetSampleRate * 0.05);
+		this.chunk = new Int16Array(this.size);
 		this.filled = 0;
 		this.pos = 0; // fractional read position carried across render quanta
 		this.level = 0;
@@ -23,12 +24,13 @@ class PcmCapture extends AudioWorkletProcessor {
 				-32768,
 				Math.min(32767, Math.round(s * 32767)),
 			);
-			if (this.filled === this.chunk.length) {
+			if (this.filled === this.size) {
 				const out = this.chunk;
 				this.port.postMessage({ pcm: out.buffer, level: this.level }, [
 					out.buffer,
 				]);
-				this.chunk = new Int16Array(out.length);
+				// out.buffer is transferred (detached, length 0) — size from the constant.
+				this.chunk = new Int16Array(this.size);
 				this.filled = 0;
 			}
 		}
