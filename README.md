@@ -101,8 +101,9 @@ web/src/main.ts          UI: captions, cards, following the agent's speech, EN/I
 web/public/pcm-capture.js AudioWorklet: resample to 24 kHz PCM16, 50 ms chunks
 scripts/e2e-voice.mjs    Scripted voice test (macOS `say` → real Voice Agent session → real jobs)
 scripts/e2e-browser.mjs  Headless Chrome with a fake microphone driving the deployed app
+scripts/demo/            Demo video pipeline (real session → UI replay → edit)
 scripts/jobs.test.mjs    Unit tests for job shaping
-submission/              Cover image, slides, in-call screenshots, video script, lablab form copy
+submission/              Demo video, cover image, slides, in-call screenshots, video script, lablab form copy
 ```
 
 ## Run it yourself
@@ -149,6 +150,16 @@ Bugs these tests found and fixed:
 2. **Late tool results were ignored.** Measured with controlled delays: with `timeout_seconds: 20`, a result sent 11 s after the call was dropped and the agent apologised; with `timeout_seconds: 60`, a 12 s result was accepted. Tools now use 60 s. `get_job` answers from jobs already on screen, and the Worker caps the upstream fetch at 15 s.
 3. **Stale `reply.done` gate.** A `tool.result` could be released by an earlier turn's `reply.done`. A `tool.call` now closes the gate until the `reply.done` that follows it.
 4. **Typed input sometimes ignored.** `conversation.message` plus a bare `reply.create` sometimes produced a generic intro. The typed text is now also passed in `reply.create.instructions`.
+
+## Demo video
+
+[`submission/demo.mp4`](submission/demo.mp4) (2:32, 1920×1080) is built by three scripts in `scripts/demo/`:
+
+1. `record-session.mjs` runs one real AssemblyAI Voice Agent session through the deployed Worker, using the app's own session config and tools. The user is a scripted microphone that streams synthesized speech (macOS `say`) in real time and cuts in when job #3 is actually being spoken. It logs every server event and writes the agent's audio placed exactly the way the web client plays it.
+2. `replay-ui.mjs` loads the deployed web app in headless Chrome and feeds it that session through a stand-in socket (same events, same timing, recorded tool responses), then captures the screen with the CDP screencast.
+3. `make-video.mjs` adds narration, captions and slides, removes dead air longer than about 2 s, normalizes loudness to -16 LUFS, and encodes H.264 + AAC.
+
+Why the screen is replayed rather than captured live: on the 8 GB build laptop (load average 10–14), capturing 1080p in real time starved the page and delayed the microphone audio by up to about 37 s. That broke turn-taking and made the agent's audio choppy. The conversation in the video is one real session; only the screen rendering comes from its event log. The video says on screen that the user's voice is synthesized.
 
 ## Job data
 

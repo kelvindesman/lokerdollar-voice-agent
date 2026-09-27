@@ -30,4 +30,4 @@ Voice agent / Future of work
 - Repo: https://github.com/kelvindesman/lokerdollar-voice-agent
 - Slides: submission/slides.pdf (upload the PDF)
 - Cover image: submission/cover.png (1920×1080, 16:9)
-- Video: record from submission/video-script.md, upload to YouTube (unlisted is fine), paste the link
+- Video: submission/demo.mp4 (2:32, 1080p). Upload to YouTube (unlisted is fine) and paste the link

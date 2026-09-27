@@ -1,3 +1,5 @@
+> A finished video is in `submission/demo.mp4` (see README, "Demo video"). This script is kept for a human re-recording.
+
 # Demo video script (target 2:30, hard cap 3:00)
 
 **Setup before recording**
