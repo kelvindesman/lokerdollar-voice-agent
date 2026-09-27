@@ -75,6 +75,11 @@ export class VoiceClient {
 		[];
 	private state: AgentState = "idle";
 	private speakingTimer: number | null = null;
+	/** AudioContext time at which the current reply's first sample plays. */
+	private replyAudioStart: number | null = null;
+	/** Words that arrived before the reply's first audio chunk. */
+	private earlyWords: { replyId: string; word: string; startMs: number }[] = [];
+	private wordTimers = new Set<number>();
 
 	constructor(
 		private readonly on: Partial<VoiceEvents>,
@@ -261,20 +266,34 @@ export class VoiceClient {
 				break;
 			case "reply.started":
 				this.lastEvent = ev.type;
+				this.replyAudioStart = null;
+				this.earlyWords = [];
 				break;
 			case "reply.audio":
 				this.play(String(ev.data ?? ""));
 				break;
-			case "transcript.agent.delta":
-				this.on.agentWord?.(String(ev.reply_id ?? ""), String(ev.delta ?? ""));
+			case "transcript.agent.delta": {
+				// Deltas arrive well ahead of the audio. Show each word when it is
+				// actually heard: reply audio start + the word's start_ms.
+				const w = {
+					replyId: String(ev.reply_id ?? ""),
+					word: String(ev.delta ?? ""),
+					startMs: Number(ev.start_ms),
+				};
+				if (!Number.isFinite(w.startMs)) this.on.agentWord?.(w.replyId, w.word);
+				else if (this.replyAudioStart === null) this.earlyWords.push(w);
+				else this.scheduleWord(w);
 				break;
-			case "transcript.agent":
-				this.on.agentFinal?.(
-					String(ev.reply_id ?? ""),
-					String(ev.text ?? ""),
-					ev.interrupted === true,
-				);
+			}
+			case "transcript.agent": {
+				const replyId = String(ev.reply_id ?? "");
+				const text = String(ev.text ?? "");
+				const interrupted = ev.interrupted === true;
+				// Sent once all audio is DELIVERED; hold it until it has been played.
+				const wait = interrupted || !this.ctx ? 0 : Math.max(0, (this.playhead - this.ctx.currentTime) * 1000);
+				this.later(wait, () => this.on.agentFinal?.(replyId, text, interrupted));
 				break;
+			}
 			case "reply.done":
 				this.lastEvent = ev.type;
 				if (ev.status === "interrupted") {
@@ -364,6 +383,11 @@ export class VoiceClient {
 		src.connect(ctx.destination);
 		const now = ctx.currentTime;
 		this.playhead = Math.max(this.playhead, now + 0.03);
+		if (this.replyAudioStart === null) {
+			this.replyAudioStart = this.playhead;
+			for (const w of this.earlyWords) this.scheduleWord(w);
+			this.earlyWords = [];
+		}
 		src.start(this.playhead);
 		this.playhead += buffer.duration;
 		this.sources.add(src);
@@ -378,7 +402,29 @@ export class VoiceClient {
 		);
 	}
 
+	private later(ms: number, fn: () => void): void {
+		if (ms <= 0) {
+			fn();
+			return;
+		}
+		const id = window.setTimeout(() => {
+			this.wordTimers.delete(id);
+			fn();
+		}, ms);
+		this.wordTimers.add(id);
+	}
+
+	private scheduleWord(w: { replyId: string; word: string; startMs: number }): void {
+		const ctx = this.ctx;
+		if (!ctx || this.replyAudioStart === null) return;
+		const at = this.replyAudioStart + w.startMs / 1000;
+		this.later((at - ctx.currentTime) * 1000, () => this.on.agentWord?.(w.replyId, w.word));
+	}
+
 	private flushPlayback(): void {
+		for (const id of this.wordTimers) window.clearTimeout(id);
+		this.wordTimers.clear();
+		this.earlyWords = [];
 		for (const s of this.sources) {
 			try {
 				s.stop();
