@@ -83,7 +83,8 @@ export function speakable(text: string): string {
 
 /** Sentence chunks: Chrome cuts off single utterances longer than ~15 s. */
 export function chunks(text: string): string[] {
-	const parts = text.match(/[^.!?]+[.!?]*\s*/g) ?? [text];
+	// Split only where punctuation is followed by a space, so "3.8" stays whole.
+	const parts = text.split(/(?<=[.!?])\s+/);
 	const out: string[] = [];
 	for (const p of parts) {
 		const s = p.trim();
@@ -105,7 +106,11 @@ function words(s: string): string[] {
 }
 
 /** True when what the mic heard is mostly the agent's own voice. */
-export function looksLikeEcho(heard: string, spoken: string, threshold = 0.5): boolean {
+export function looksLikeEcho(
+	heard: string,
+	spoken: string,
+	threshold = 0.5,
+): boolean {
 	const h = words(heard);
 	if (h.length === 0) return true;
 	const s = new Set(words(spoken));
@@ -131,6 +136,12 @@ export class NemotronVoiceClient {
 	private rec: Recognition | null = null;
 	private stream: MediaStream | null = null;
 	private ctx: AudioContext | null = null;
+	/** Supertonic (neural, server-side) voice; null until the container reports ready. */
+	private neural = false;
+	private playCtx: AudioContext | null = null;
+	private playhead = 0;
+	private sources = new Set<AudioBufferSourceNode>();
+	private ttsAbort: AbortController | null = null;
 	private raf = 0;
 	private itemSeq = 0;
 	private itemId = "";
@@ -180,6 +191,10 @@ export class NemotronVoiceClient {
 		this.running = true;
 		this.history = [];
 		this.setState("connecting");
+		// Created inside the click that started the call, so playback is allowed.
+		this.playCtx ??= new AudioContext();
+		void this.playCtx.resume();
+		void this.warmNeural();
 		try {
 			this.stream = await navigator.mediaDevices.getUserMedia({
 				audio: { echoCancellation: true, noiseSuppression: true },
@@ -468,6 +483,28 @@ export class NemotronVoiceClient {
 		return voices[0] ?? null;
 	}
 
+	/**
+	 * Wake the Supertonic container. A cold start (weights from R2 plus ONNX
+	 * load) takes about 90 s, so the browser voice covers the first replies
+	 * and the neural voice takes over as soon as it is ready.
+	 */
+	private async warmNeural() {
+		for (let i = 0; i < 40 && this.running && !this.neural; i++) {
+			try {
+				const r = (await (await fetch("/api/tts")).json()) as {
+					ready?: boolean;
+				};
+				if (r.ready) {
+					this.neural = true;
+					return;
+				}
+			} catch {
+				/* keep polling */
+			}
+			await new Promise((ok) => setTimeout(ok, 5000));
+		}
+	}
+
 	private speak(text: string, turn: number, filler = false) {
 		if (!text || turn !== this.turn || !this.running) return;
 		const replyId = `r${turn}${filler ? "f" : ""}`;
@@ -476,9 +513,98 @@ export class NemotronVoiceClient {
 		const entry = { text, endedAt: Number.POSITIVE_INFINITY };
 		this.recent.push(entry);
 		if (!filler) this.setState("speaking");
+		const done = () => {
+			entry.endedAt = performance.now();
+			if (this.speaking?.replyId !== replyId) return;
+			this.speaking = null;
+			this.openMic();
+			this.on.agentFinal?.(replyId, text, false);
+			if (!filler && turn === this.turn) this.setState("listening");
+		};
+		if (this.neural && this.playCtx)
+			void this.speakNeural(text, turn, replyId, done);
+		else this.speakBrowser(text, turn, replyId, done);
+	}
+
+	/**
+	 * Supertonic: one request per sentence group, fetched in order while the
+	 * previous one plays (synthesis is ~4x faster than real time), scheduled
+	 * back to back on one AudioContext. Words are paced across each buffer's
+	 * duration so the matching job card lights up as it is spoken.
+	 */
+	private async speakNeural(
+		text: string,
+		turn: number,
+		replyId: string,
+		done: () => void,
+	) {
+		const ctx = this.playCtx;
+		if (!ctx) return;
+		const abort = new AbortController();
+		this.ttsAbort = abort;
+		const parts = chunks(text);
+		const fetchPart = async (part: string) => {
+			const res = await fetch("/api/tts", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ text: part, lang: this.lang, voice: "F1" }),
+				signal: abort.signal,
+			});
+			if (!res.ok) throw new Error(`tts HTTP ${res.status}`);
+			return ctx.decodeAudioData(await res.arrayBuffer());
+		};
+		let next = fetchPart(parts[0] ?? text);
+		for (let i = 0; i < parts.length; i++) {
+			let buf: AudioBuffer;
+			try {
+				buf = await next;
+			} catch {
+				if (turn !== this.turn || abort.signal.aborted) return;
+				// Container gone or slow: finish this reply with the browser voice.
+				this.neural = false;
+				void this.warmNeural();
+				this.speakBrowser(parts.slice(i).join(" "), turn, replyId, done);
+				return;
+			}
+			if (turn !== this.turn || abort.signal.aborted) return;
+			const nextPart = parts[i + 1];
+			if (nextPart) next = fetchPart(nextPart);
+			const src = ctx.createBufferSource();
+			src.buffer = buf;
+			src.connect(ctx.destination);
+			const at = Math.max(ctx.currentTime + 0.02, this.playhead);
+			src.start(at);
+			this.playhead = at + buf.duration;
+			this.sources.add(src);
+			const part = parts[i] ?? "";
+			const ws = part.split(/\s+/).filter(Boolean);
+			const startDelay = (at - ctx.currentTime) * 1000;
+			ws.forEach((w, k) => {
+				const t = window.setTimeout(
+					() => {
+						this.wordTimers.delete(t);
+						if (turn === this.turn) this.on.agentWord?.(replyId, w);
+					},
+					startDelay + (k / ws.length) * buf.duration * 1000,
+				);
+				this.wordTimers.add(t);
+			});
+			const last = i === parts.length - 1;
+			src.onended = () => {
+				this.sources.delete(src);
+				if (last && turn === this.turn) done();
+			};
+		}
+	}
+
+	private speakBrowser(
+		text: string,
+		turn: number,
+		replyId: string,
+		done: () => void,
+	) {
 		const parts = chunks(text);
 		const voice = this.pickVoice();
-		let spokenSoFar = "";
 		parts.forEach((part, i) => {
 			const u = new SpeechSynthesisUtterance(part);
 			u.lang = this.lang === "id" ? "id-ID" : "en-US";
@@ -508,14 +634,7 @@ export class NemotronVoiceClient {
 				this.wordTimers.add(id);
 			};
 			u.onend = () => {
-				spokenSoFar = `${spokenSoFar} ${part}`.trim();
-				if (i === parts.length - 1) entry.endedAt = performance.now();
-				if (i === parts.length - 1 && this.speaking?.replyId === replyId) {
-					this.speaking = null;
-					this.openMic();
-					this.on.agentFinal?.(replyId, text, false);
-					if (!filler && turn === this.turn) this.setState("listening");
-				}
+				if (i === parts.length - 1) done();
 			};
 			speechSynthesis.speak(u);
 		});
@@ -529,6 +648,18 @@ export class NemotronVoiceClient {
 		const now = performance.now();
 		for (const r of this.recent) if (r.endedAt > now) r.endedAt = now;
 		speechSynthesis.cancel();
+		this.ttsAbort?.abort();
+		this.ttsAbort = null;
+		for (const src of this.sources) {
+			src.onended = null;
+			try {
+				src.stop();
+			} catch {
+				/* not started */
+			}
+		}
+		this.sources.clear();
+		this.playhead = 0;
 		if (this.running) this.openMic();
 		if (cur && interrupted) this.on.agentFinal?.(cur.replyId, cur.text, true);
 	}

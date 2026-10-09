@@ -12,6 +12,21 @@
 		"not_found_handling": "single-page-application",
 		"run_worker_first": ["/api/*"]
 	},
+	// Supertonic-3 speech. Reuses LokerDollar's social-video image (Node 24 +
+	// onnxruntime-node + Supertonic engine), pinned by its unique build tag;
+	// worker/tts.ts overrides the entrypoint with a small TTS server.
+	"containers": [
+		{
+			"class_name": "SupertonicTTS",
+			"image": "registry.cloudflare.com/6d25a5b669eded616b24f930983daca8/lokerdollar-social-video-remotioncontainer:08208504176",
+			"max_instances": 2,
+			"instance_type": "standard-3"
+		}
+	],
+	"durable_objects": {
+		"bindings": [{ "name": "TTS", "class_name": "SupertonicTTS" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["SupertonicTTS"] }],
 	"vars": {
 		// Anonymous, read-only LokerDollar MCP server (no key needed).
 		"LOKERDOLLAR_MCP_URL": "https://lokerdollar-mcp.kelvin-6d2.workers.dev/mcp",

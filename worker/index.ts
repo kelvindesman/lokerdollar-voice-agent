@@ -2,6 +2,8 @@
  * LokerDollar Voice — Cloudflare Worker.
  *
  *   POST /api/chat               one Nemotron turn via Nebius Token Factory (tools run in the browser)
+ *   GET  /api/tts                wake the Supertonic speech container, report readiness
+ *   POST /api/tts                one sentence -> audio/wav (Supertonic-3, worker/tts.ts)
  *   GET  /api/token              mint a single-use AssemblyAI Voice Agent token (legacy engine)
  *   POST /api/tools/search_jobs  proxy → LokerDollar MCP `search_jobs`
  *   POST /api/tools/get_job      proxy → LokerDollar MCP `get_job`
@@ -13,7 +15,11 @@
  */
 
 import { type McpJob, monthlyUsdMax, toVoiceJob, type VoiceJob } from "../shared/jobs";
+import { getContainer } from "@cloudflare/containers";
 import { CHAT_TOOLS, chatSystemPrompt, type Lang } from "../shared/nemotron";
+import type { SupertonicTTS } from "./tts";
+
+export { SupertonicTTS } from "./tts";
 
 interface Env {
 	ASSETS: Fetcher;
@@ -21,6 +27,7 @@ interface Env {
 	NEBIUS_API_KEY?: string;
 	NEMOTRON_MODEL?: string;
 	LOKERDOLLAR_MCP_URL: string;
+	TTS: DurableObjectNamespace<SupertonicTTS>;
 }
 
 const TOKEN_FACTORY_URL = "https://api.tokenfactory.nebius.com/v1/chat/completions";
@@ -61,6 +68,8 @@ function limiter(max: number, windowMs: number) {
 const allowToken = limiter(8, 10 * 60_000);
 /** A voice turn with tools is 2–3 model calls; 90 per 10 min is a long, busy conversation. */
 const allowChat = limiter(90, 10 * 60_000);
+/** About 3 sentences per reply plus warm-up polls. */
+const allowTts = limiter(400, 10 * 60_000);
 
 type CacheEntry = { at: number; body: unknown };
 const toolCache = new Map<string, CacheEntry>();
@@ -287,6 +296,49 @@ async function chat(request: Request, env: Env): Promise<Response> {
 	});
 }
 
+/**
+ * Speech for one sentence. All traffic goes to one named instance so the
+ * weights load once and stay warm (sleepAfter in worker/tts.ts).
+ */
+async function tts(request: Request, env: Env): Promise<Response> {
+	if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
+	const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+	if (!allowTts(ip)) return json({ error: "rate_limited" }, 429);
+	const container = getContainer(env.TTS, "voice-1");
+	if (request.method === "GET") {
+		const res = await container.fetch(new Request("http://tts/", { method: "GET" }));
+		return json(await res.json().catch(() => ({ ready: false, error: `HTTP ${res.status}` })));
+	}
+	const body = ((await request.json().catch(() => null)) ?? {}) as {
+		text?: unknown;
+		lang?: unknown;
+		voice?: unknown;
+	};
+	const text = str(body.text, 300);
+	if (!text) return json({ error: "text is required" }, 400);
+	const res = await container.fetch(
+		new Request("http://tts/", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({
+				text,
+				lang: body.lang === "en" ? "en" : "id",
+				voice: typeof body.voice === "string" ? body.voice : "F1",
+				speed: 1.05,
+				steps: 6,
+			}),
+		}),
+	);
+	if (!res.ok) return json({ error: "tts_upstream", status: res.status }, 502);
+	return new Response(res.body, {
+		headers: {
+			"content-type": "audio/wav",
+			"cache-control": "no-store",
+			"x-synth-ms": res.headers.get("x-synth-ms") ?? "",
+		},
+	});
+}
+
 type SearchBody = {
 	query?: unknown;
 	remote_usd_only?: unknown;
@@ -429,6 +481,9 @@ export default {
 					model: env.NEMOTRON_MODEL || DEFAULT_NEMOTRON_MODEL,
 					jobSource: "lokerdollar-mcp",
 				});
+			}
+			if (pathname === "/api/tts" && (request.method === "GET" || request.method === "POST")) {
+				return await tts(request, env);
 			}
 			if (pathname === "/api/chat" && request.method === "POST") {
 				return await chat(request, env);
