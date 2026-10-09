@@ -15,12 +15,13 @@ This repository started as an AssemblyAI Voice Agent Hackathon entry in Septembe
 | Reasoning and tool calls | AssemblyAI's built-in LLM | **NVIDIA Nemotron** (`nvidia/Nemotron-3_5-Lightning` by default; any Nemotron id via `NEMOTRON_MODEL`) called through the **Nebius Token Factory** OpenAI-compatible API from the Worker (`POST /api/chat`) |
 | Language | Understood Bahasa, but always answered in English (English-only voice) | **Answers in Bahasa Indonesia** in Bahasa mode, including pay in rupiah ("sekitar 20 juta rupiah sebulan") |
 | Search tools | Keyword search only | New **salary floor** filter (`min_monthly_usd`, spoken as "minimal 2 ribu dolar sebulan" or "at least 60k a year") and **"surely open to Indonesia"** filter (`indonesia_friendly_only`) |
-| Speech | AssemblyAI STT and TTS over one WebSocket | Browser speech recognition (`id-ID` / `en-US`) and the browser speech engine, so a voice turn costs one or two cheap Nemotron calls and nothing else. Half duplex: the mic closes while the agent talks, and a tap interrupts |
+| Search tools (web) | None | New **`company_check`** tool: "is this company legit?" runs one **Tavily** web search for the employer. Nemotron speaks a two or three sentence summary (what the company does, any warning signs), and the sources appear as links in the conversation |
+| Speech | AssemblyAI STT and TTS over one WebSocket | Browser speech recognition (`id-ID` / `en-US`). Replies are spoken by **Supertonic-3** (open-weights ONNX TTS with Indonesian) running in a Cloudflare Container (`worker/tts.ts`, `/api/tts`); sentences are synthesized about 4x faster than real time and played back to back. The browser speech engine covers the container's ~90 s cold start. Half duplex: the mic closes while the agent talks, and a tap interrupts |
 | Testing | Voice e2e | Adds `scripts/e2e-nemotron.mjs`, a scripted Indonesian and English conversation against the live Worker that checks the right tool is called each turn |
 
 The original AssemblyAI engine still works at `?engine=assemblyai` for comparison.
 
-Measured on 2026-10-09 against the live LokerDollar job API: the first Nemotron call took 0.5 to 1.1 s; a full search turn (model, then job search, then model) took 1.7 to 4.2 s; all 5 scripted turns called the expected tool.
+Measured on 2026-10-09 against the live LokerDollar job API: the first Nemotron call took 0.5 to 1.1 s; a full search turn (model, then job search, then model) took 1.7 to 4.2 s; all scripted turns called the expected tool (7 of 7 after `company_check` was added).
 
 ![LokerDollar Voice](submission/cover.png)
 

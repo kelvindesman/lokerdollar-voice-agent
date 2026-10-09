@@ -158,6 +158,24 @@ function bubble(key: string, who: "user" | "agent"): HTMLParagraphElement {
 	return b;
 }
 
+/** Company-check sources as links in the conversation, under the agent's answer. */
+function showSources(company: string, sources: { title: string; url: string; site: string }[]) {
+	const box = el("div", { class: "line sources" });
+	box.append(el("span", { class: "who" }, t.sourcesFor(company)));
+	if (!sources.length) box.append(el("span", { class: "text" }, t.noSources));
+	const list = el("ul");
+	for (const s of sources) {
+		const a = el("a", { href: s.url, target: "_blank", rel: "noopener noreferrer" }, s.site);
+		a.title = s.title;
+		const li = el("li");
+		li.append(a);
+		list.append(li);
+	}
+	box.append(list);
+	transcript.append(box);
+	examples.hidden = true;
+}
+
 function setBubbleText(b: HTMLParagraphElement, text: string, partial = false) {
 	const span = b.querySelector(".text");
 	if (span) span.textContent = text;
@@ -433,6 +451,26 @@ async function runTool(
 		return {
 			...forModel({ ...r.job, rank: 0 }),
 			applyButtonShownOnScreen: true,
+		};
+	}
+	if (name === "company_check") {
+		const company = typeof args.company === "string" ? args.company : "";
+		const r = await postTool<{
+			company?: string;
+			summary?: string | null;
+			sources?: { title: string; url: string; site: string; snippet: string }[];
+			error?: string;
+		}>("company_check", { company });
+		if (r.error || !r.sources) {
+			return { error: `Could not look up ${company} right now.` };
+		}
+		showSources(company, r.sources);
+		return {
+			company,
+			summary: r.summary,
+			// Sites and snippets only: URLs are on screen, never read aloud.
+			sources: r.sources.map(({ site, title, snippet }) => ({ site, title, snippet })),
+			sourcesShownOnScreen: r.sources.length > 0,
 		};
 	}
 	return { error: `Unknown tool ${name}.` };

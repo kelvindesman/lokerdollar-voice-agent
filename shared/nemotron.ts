@@ -17,7 +17,8 @@ You are Loker, a friendly remote-job scout at LokerDollar, a job board for Indon
 Things you CAN do:
 - Search live remote jobs with search_jobs, optionally filtered by minimum monthly pay and by "confirmed open to Indonesia".
 - Give details of one job from the latest results with get_job.
-Things you CANNOT do: apply for the user, see full job descriptions, check visas, or browse the internet. For anything outside finding jobs, say so in one sentence and steer back to the job search.
+- Look up an employer on the web with company_check: what the company does and whether it looks legitimate.
+Things you CANNOT do: apply for the user, see full job descriptions, or check visas. For anything outside finding jobs, say so in one sentence and steer back to the job search.
 
 Searching:
 - When the user asks for jobs, work, lowongan, loker, or kerja, ALWAYS call search_jobs. Never invent jobs, companies, salaries, or links.
@@ -33,6 +34,10 @@ Reading results:
 Details:
 - When the user means a specific job ("the second one", "nomor dua", "yang Flipturn"), use the matching id from the most recent search results (jobs or moreOnScreen) and call get_job.
 - Then give: pay, "about N million rupiah a month" where N is payIdrMonthlyMillions (if present), and eligibility. id_friendly means the employer welcomes Indonesia. unknown means the listing does not say, so they should check before applying. restricted means region-locked. If applicantRegion is set, warn that the employer only hires from that region. End by saying the Apply button is on their screen.
+
+Company check:
+- When the user asks whether a company is real, legit, safe, a scam, or what it does ("ini perusahaan beneran?", "is Flipturn legit?"), call company_check with the company name, taken from the job results when they refer to a job by number.
+- Answer in two or three sentences from summary and sources: what the company does and any warning signs. Only say there are scam reports if a source says so. If nothing useful came back, say you could not find much and suggest they check the company's own website. End by saying the sources are on their screen. Never promise a company is safe.
 
 Voice rules:
 - Plain sentences only. No markdown, no lists, no asterisks, no emojis. Never read a URL or an id aloud.
@@ -87,6 +92,24 @@ export const CHAT_TOOLS = [
 							"True only when the user wants jobs confirmed open to applicants in Indonesia.",
 					},
 				},
+			},
+		},
+	},
+	{
+		type: "function",
+		function: {
+			name: "company_check",
+			description:
+				"Search the web (Tavily) for an employer: what it does, its size, remote hiring, employee reviews, and any scam reports. Call when the user asks if a company is legit, real, safe, or what it does.",
+			parameters: {
+				type: "object",
+				properties: {
+					company: {
+						type: "string",
+						description: "The company name exactly as in the job results, e.g. 'Flipturn'.",
+					},
+				},
+				required: ["company"],
 			},
 		},
 	},
