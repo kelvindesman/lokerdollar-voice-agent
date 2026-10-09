@@ -92,6 +92,13 @@ function spokenAmount(n: number): string {
 	return `${Math.round(n)}`;
 }
 
+/** Eligibility as the agent should say it: models read enum values aloud ("idfriendly"). */
+export const ELIGIBILITY_SPOKEN: Record<VoiceJob["eligibility"], string> = {
+	id_friendly: "open to applicants in Indonesia",
+	unknown: "the listing does not say whether Indonesia is accepted; check before applying",
+	restricted: "region-locked; Indonesia is probably not accepted",
+};
+
 function normalizeEligibility(v: unknown): VoiceJob["eligibility"] {
 	return v === "id_friendly" || v === "restricted" ? v : "unknown";
 }

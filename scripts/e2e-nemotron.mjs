@@ -30,8 +30,17 @@ const SCRIPTS = {
 let lastJobs = [];
 
 /** Mirrors forModel() in web/src/main.ts. */
+const ELIGIBILITY_SPOKEN = {
+	id_friendly: "open to applicants in Indonesia",
+	unknown: "the listing does not say whether Indonesia is accepted; check before applying",
+	restricted: "region-locked; Indonesia is probably not accepted",
+};
 function forModel({ url, applyUrl, payLabel, payIdrMonthly, ...j }) {
-	return { ...j, payIdrMonthlyMillions: payIdrMonthly ? Math.round(payIdrMonthly / 1_000_000) : null };
+	return {
+		...j,
+		eligibility: ELIGIBILITY_SPOKEN[j.eligibility] ?? j.eligibility,
+		payIdrMonthlyMillions: payIdrMonthly ? Math.round(payIdrMonthly / 1_000_000) : null,
+	};
 }
 
 async function post(path, body) {

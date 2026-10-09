@@ -1,4 +1,4 @@
-import { formatIdrMonthly, type VoiceJob } from "../../shared/jobs";
+import { ELIGIBILITY_SPOKEN, formatIdrMonthly, type VoiceJob } from "../../shared/jobs";
 import { type Lang, systemPrompt } from "./agent-config";
 import { STRINGS, type Strings } from "./i18n";
 import "./styles.css";
@@ -397,7 +397,7 @@ function forModel(j: VoiceJob) {
 		payIdrMonthlyMillions: j.payIdrMonthly
 			? Math.round(j.payIdrMonthly / 1_000_000)
 			: null,
-		eligibility: j.eligibility,
+		eligibility: ELIGIBILITY_SPOKEN[j.eligibility],
 		applicantRegion: j.applicantRegion,
 		freshness: j.freshness,
 	};
