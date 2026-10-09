@@ -115,7 +115,11 @@ function renderState() {
 	orb.setAttribute("aria-pressed", String(active));
 	orb.setAttribute("aria-label", active ? t.stop : t.start);
 	const interruptible = ENGINE === "nemotron" && state === "speaking";
-	orbLabel.textContent = interruptible ? t.interrupt : active ? t.stop : t.start;
+	orbLabel.textContent = interruptible
+		? t.interrupt
+		: active
+			? t.stop
+			: t.start;
 	if (interruptible) orb.setAttribute("aria-label", t.interrupt);
 	statusEl.textContent =
 		state === "idle"
@@ -159,13 +163,23 @@ function bubble(key: string, who: "user" | "agent"): HTMLParagraphElement {
 }
 
 /** Company-check sources as links in the conversation, under the agent's answer. */
-function showSources(company: string, sources: { title: string; url: string; site: string }[]) {
+function showSources(
+	company: string,
+	sources: { title: string; url: string; site: string }[],
+) {
 	const box = el("div", { class: "line sources" });
 	box.append(el("span", { class: "who" }, t.sourcesFor(company)));
 	if (!sources.length) box.append(el("span", { class: "text" }, t.noSources));
 	const list = el("ul");
+	const seen = new Set<string>();
 	for (const s of sources) {
-		const a = el("a", { href: s.url, target: "_blank", rel: "noopener noreferrer" }, s.site);
+		if (seen.has(s.site)) continue;
+		seen.add(s.site);
+		const a = el(
+			"a",
+			{ href: s.url, target: "_blank", rel: "noopener noreferrer" },
+			s.site,
+		);
 		a.title = s.title;
 		const li = el("li");
 		li.append(a);
@@ -226,7 +240,13 @@ function renderCards() {
 			),
 		);
 		if (job.applicantRegion)
-			badges.append(el("span", { class: "badge region" }, t.regionOnly(job.applicantRegion)));
+			badges.append(
+				el(
+					"span",
+					{ class: "badge region" },
+					t.regionOnly(job.applicantRegion),
+				),
+			);
 
 		const actions = el("div", { class: "actions" });
 		const apply = el(
@@ -374,7 +394,9 @@ function forModel(j: VoiceJob) {
 		company: j.company,
 		paySpoken: j.paySpoken,
 		// Whole millions: models misread raw 8-digit rupiah (19800000 -> "198 juta").
-		payIdrMonthlyMillions: j.payIdrMonthly ? Math.round(j.payIdrMonthly / 1_000_000) : null,
+		payIdrMonthlyMillions: j.payIdrMonthly
+			? Math.round(j.payIdrMonthly / 1_000_000)
+			: null,
 		eligibility: j.eligibility,
 		applicantRegion: j.applicantRegion,
 		freshness: j.freshness,
@@ -394,7 +416,9 @@ async function runTool(
 			const r = await postTool<SearchResponse>("search_jobs", {
 				query,
 				remote_usd_only: args.remote_usd_only !== false,
-				...(args.indonesia_friendly_only === true ? { indonesia_friendly_only: true } : {}),
+				...(args.indonesia_friendly_only === true
+					? { indonesia_friendly_only: true }
+					: {}),
 				...(typeof args.min_monthly_usd === "number" && args.min_monthly_usd > 0
 					? { min_monthly_usd: args.min_monthly_usd }
 					: {}),
@@ -405,7 +429,9 @@ async function runTool(
 			speechWindow = [];
 			renderCards();
 			if (client.active && window.matchMedia("(max-width: 880px)").matches) {
-				document.getElementById("jobs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+				document
+					.getElementById("jobs")
+					?.scrollIntoView({ behavior: "smooth", block: "start" });
 			}
 			meta.textContent =
 				(lastQuery
@@ -418,7 +444,14 @@ async function runTool(
 				// The model reads only the top three; the rest are on screen and
 				// stay addressable by number ("nomor lima") through moreOnScreen.
 				jobs: r.jobs.slice(0, 3).map(forModel),
-				moreOnScreen: r.jobs.slice(3).map((j) => ({ rank: j.rank, id: j.id, title: j.title, company: j.company })),
+				moreOnScreen: r.jobs
+					.slice(3)
+					.map((j) => ({
+						rank: j.rank,
+						id: j.id,
+						title: j.title,
+						company: j.company,
+					})),
 				...(r.note ? { note: r.note } : {}),
 			};
 		} finally {
@@ -469,7 +502,11 @@ async function runTool(
 			company,
 			summary: r.summary,
 			// Sites and snippets only: URLs are on screen, never read aloud.
-			sources: r.sources.map(({ site, title, snippet }) => ({ site, title, snippet })),
+			sources: r.sources.map(({ site, title, snippet }) => ({
+				site,
+				title,
+				snippet,
+			})),
 			sourcesShownOnScreen: r.sources.length > 0,
 		};
 	}
@@ -540,7 +577,8 @@ function submitText(text: string) {
 orb.addEventListener("click", () => {
 	// Nemotron engine is half duplex: a tap while it talks interrupts, a tap
 	// while it listens ends the call.
-	if (client instanceof NemotronVoiceClient && client.isSpeaking) client.interrupt();
+	if (client instanceof NemotronVoiceClient && client.isSpeaking)
+		client.interrupt();
 	else if (client.active) client.stop();
 	else void client.start(lang);
 });
