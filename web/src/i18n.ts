@@ -32,6 +32,8 @@ const en = {
 		`${n} live match${n === 1 ? "" : "es"} for “${q}”`,
 	resultsAny: (n: number) => `${n} live matches`,
 	widened: "No USD-salaried matches, so these may not list pay.",
+	sourcesFor: (c: string) => `Web sources · ${c}`,
+	noSources: "Nothing found on the web.",
 	salaryNA: "Salary not listed",
 	eligibility: {
 		id_friendly: "Open to Indonesia",
@@ -48,7 +50,8 @@ const en = {
 	agent: "Loker",
 	rateNote: "Rupiah ≈ at Rp 16,500/USD, midpoint of range",
 	micNote: "Uses your microphone only while a call is active.",
-	poweredBy: "Brain: NVIDIA Nemotron on Nebius Token Factory · Jobs by LokerDollar",
+	poweredBy:
+		"Brain: NVIDIA Nemotron on Nebius Token Factory · Jobs by LokerDollar",
 };
 
 type Strings = typeof en;
@@ -77,7 +80,8 @@ const id: Strings = {
 	],
 	resultsTitle: "Lowongan",
 	step1: "Tekan mic dan sebutkan pekerjaan yang kamu cari.",
-	step2: "Loker mencari ~4.800 lowongan remote aktif yang terbuka untuk Indonesia.",
+	step2:
+		"Loker mencari ~4.800 lowongan remote aktif yang terbuka untuk Indonesia.",
 	step3: "Bilang “nomor dua” untuk detail. Tekan tombol untuk memotong.",
 	resultsEmpty:
 		"Lowongan akan muncul di sini, bernomor, jadi kamu bisa bilang “nomor dua”.",
@@ -86,6 +90,8 @@ const id: Strings = {
 	resultsAny: (n: number) => `${n} lowongan aktif`,
 	widened:
 		"Tidak ada yang mencantumkan gaji USD, jadi hasil ini mungkin tanpa gaji.",
+	sourcesFor: (c: string) => `Sumber web · ${c}`,
+	noSources: "Tidak ada hasil di web.",
 	salaryNA: "Gaji tidak dicantumkan",
 	eligibility: {
 		id_friendly: "Terbuka untuk Indonesia",

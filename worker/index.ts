@@ -7,6 +7,7 @@
  *   GET  /api/token              mint a single-use AssemblyAI Voice Agent token (legacy engine)
  *   POST /api/tools/search_jobs  proxy → LokerDollar MCP `search_jobs`
  *   POST /api/tools/get_job      proxy → LokerDollar MCP `get_job`
+ *   POST /api/tools/company_check  web lookup of an employer via Tavily Search
  *   GET  /api/health             liveness + config check (no secrets)
  *   *                            static frontend (ASSETS)
  *
@@ -26,6 +27,7 @@ interface Env {
 	ASSEMBLYAI_API_KEY?: string;
 	NEBIUS_API_KEY?: string;
 	NEMOTRON_MODEL?: string;
+	TAVILY_API_KEY?: string;
 	LOKERDOLLAR_MCP_URL: string;
 	TTS: DurableObjectNamespace<SupertonicTTS>;
 }
@@ -430,6 +432,72 @@ async function searchJobs(request: Request, env: Env): Promise<Response> {
 	return json(result);
 }
 
+const TAVILY_URL = "https://api.tavily.com/search";
+/** Each lookup spends Tavily credits (free tier: 1,000 a month). */
+const allowCompanyCheck = limiter(20, 10 * 60_000);
+
+/**
+ * "Is this company legit?" One Tavily search for the employer, summarized by
+ * Tavily's answer field. The model speaks the summary; the browser shows the
+ * sources as links so the user can check them.
+ */
+async function companyCheck(request: Request, env: Env): Promise<Response> {
+	if (!env.TAVILY_API_KEY) return json({ error: "company_check_not_configured" }, 503);
+	if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
+	const body = ((await request.json().catch(() => ({}))) ?? {}) as { company?: unknown };
+	const company = str(body.company, 120);
+	if (!company) return json({ error: "company is required" }, 400);
+
+	const cacheKey = `c|${company.toLowerCase()}`;
+	const cached = cacheGet(cacheKey);
+	if (cached) return json(cached, 200, { "x-cache": "hit" });
+	const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+	if (!allowCompanyCheck(ip)) return json({ error: "rate_limited" }, 429);
+
+	const res = await fetch(TAVILY_URL, {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			authorization: `Bearer ${env.TAVILY_API_KEY}`,
+		},
+		body: JSON.stringify({
+			// Quoted name only: extra words like "reviews" or "scam" pull in generic
+			// scam-advice pages instead of the company (measured 2026-10-09).
+			query: `"${company.replace(/"/g, "")}" company`,
+			search_depth: "basic",
+			max_results: 5,
+			include_answer: "basic",
+		}),
+	});
+	if (!res.ok) {
+		return json({ error: "lookup_failed", message: `Web lookup failed (HTTP ${res.status}).` }, 502);
+	}
+	const data = (await res.json()) as {
+		answer?: string;
+		results?: { title?: string; url?: string; content?: string }[];
+	};
+	// Drop results that never mention the company (search padding).
+	const squash = (v: string) => v.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+	const needle = squash(company);
+	const sources = (data.results ?? [])
+		.filter((r) => typeof r.url === "string" && /^https?:\/\//.test(r.url))
+		.filter((r) => squash(`${r.url} ${r.title ?? ""} ${r.content ?? ""}`).includes(needle))
+		.slice(0, 4)
+		.map((r) => ({
+			title: (r.title ?? "").slice(0, 120),
+			url: r.url as string,
+			site: new URL(r.url as string).hostname.replace(/^www\./, ""),
+			snippet: (r.content ?? "").replace(/\s+/g, " ").slice(0, 280),
+		}));
+	const result = {
+		company,
+		summary: (data.answer ?? "").slice(0, 700) || null,
+		sources,
+	};
+	cachePut(cacheKey, result);
+	return json(result);
+}
+
 async function getJob(request: Request, env: Env): Promise<Response> {
 	const body = ((await request.json().catch(() => ({}))) ?? {}) as {
 		job_id?: unknown;
@@ -496,6 +564,9 @@ export default {
 			}
 			if (pathname === "/api/tools/get_job" && request.method === "POST") {
 				return await getJob(request, env);
+			}
+			if (pathname === "/api/tools/company_check" && request.method === "POST") {
+				return await companyCheck(request, env);
 			}
 			if (pathname.startsWith("/api/")) {
 				return json({ error: "not_found" }, 404);

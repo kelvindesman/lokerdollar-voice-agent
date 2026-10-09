@@ -17,11 +17,13 @@ const SCRIPTS = {
 	id: [
 		{ say: "cari kerja customer support remote yang bayar dolar dong", expect: "search_jobs" },
 		{ say: "ceritain yang nomor dua", expect: "get_job" },
+		{ say: "perusahaan itu beneran nggak sih? bukan penipuan kan?", expect: "company_check" },
 		{ say: "ada yang gajinya minimal 2000 dolar sebulan dan pasti bisa dari Indonesia? buat developer", expect: "search_jobs", args: (a) => a.min_monthly_usd >= 1500 },
 	],
 	en: [
 		{ say: "Find me remote React jobs that pay in dollars", expect: "search_jobs" },
 		{ say: "Tell me more about the first one", expect: "get_job" },
+		{ say: "Is that company legit? What do they do?", expect: "company_check" },
 	],
 };
 
@@ -56,6 +58,16 @@ async function runTool(name, args) {
 		const j = lastJobs.find((x) => x.id === args.job_id);
 		if (!j) return { error: `No job with id "${args.job_id}" in the latest results.` };
 		return { ...forModel(j), applyButtonShownOnScreen: true };
+	}
+	if (name === "company_check") {
+		const r = await post("/api/tools/company_check", args);
+		if (r.error || !r.sources) return { error: `Could not look up ${args.company} right now.` };
+		return {
+			company: r.company,
+			summary: r.summary,
+			sources: r.sources.map(({ site, title, snippet }) => ({ site, title, snippet })),
+			sourcesShownOnScreen: r.sources.length > 0,
+		};
 	}
 	return { error: `Unknown tool ${name}` };
 }
