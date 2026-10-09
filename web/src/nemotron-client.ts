@@ -550,7 +550,7 @@ export class NemotronVoiceClient {
 			const res = await fetch("/api/tts", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ text: part, lang: this.lang, voice: "F1", speed: 1.1 }),
+				body: JSON.stringify({ text: part, lang: this.lang, voice: "F1" }),
 				signal: abort.signal,
 			});
 			if (!res.ok) throw new Error(`tts HTTP ${res.status}`);
