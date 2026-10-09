@@ -170,6 +170,21 @@ Bugs these tests found and fixed:
 
 ## Demo video
 
+### Nemotron build (October 2026)
+
+[`submission/demo-nemotron.mp4`](submission/demo-nemotron.mp4) (2:43, 1920×1080, English captions) is one live Bahasa Indonesia session against the deployed Worker, built by two scripts in `scripts/demo/`:
+
+1. `record-nemotron.mjs` opens the deployed app in headless Chrome and holds a scripted conversation: a search, a company check (Tavily), a filtered search, and an interruption followed by a new question. Nemotron, the job tools, Tavily and the Supertonic voice all run live. One edge is scripted: Chrome's Web Speech service does not accept a fake microphone, so the user's lines (synthesized with Supertonic) are delivered as speech-recognition results at the pace of the clip. It records the CDP screencast, every audio buffer the page plays with its start time, and each buffer's sentence.
+2. `make-nemotron-video.mjs` mixes that audio with the user's clips, shortens silences longer than 1 s (never inside a spoken line), overlays English captions (`captions.json`, translated by hand), and adds two narrated slides. The video says all this on screen.
+
+```bash
+node scripts/demo/record-nemotron.mjs https://lokerdollar-voice-agent.kelvin-6d2.workers.dev rec/
+node scripts/demo/make-nemotron-video.mjs https://lokerdollar-voice-agent.kelvin-6d2.workers.dev rec/ --skeleton   # then fill rec/captions.json
+node scripts/demo/make-nemotron-video.mjs https://lokerdollar-voice-agent.kelvin-6d2.workers.dev rec/ work/ demo.mp4
+```
+
+### AssemblyAI build (September 2026)
+
 [`submission/demo.mp4`](submission/demo.mp4) (2:32, 1920×1080) is built by three scripts in `scripts/demo/`:
 
 1. `record-session.mjs` runs one real AssemblyAI Voice Agent session through the deployed Worker, using the app's own session config and tools. The user is a scripted microphone that streams synthesized speech (macOS `say`) in real time and cuts in when job #3 is actually being spoken. It logs every server event and writes the agent's audio placed exactly the way the web client plays it.

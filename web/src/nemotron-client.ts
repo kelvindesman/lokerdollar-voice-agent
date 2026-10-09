@@ -194,7 +194,9 @@ export class NemotronVoiceClient {
 		// Created inside the click that started the call, so playback is allowed.
 		this.playCtx ??= new AudioContext();
 		void this.playCtx.resume();
-		void this.warmNeural();
+		// A warm container answers in well under a second: give it that long so
+		// the greeting is already in the neural voice, then carry on regardless.
+		const warm = this.warmNeural();
 		try {
 			this.stream = await navigator.mediaDevices.getUserMedia({
 				audio: { echoCancellation: true, noiseSuppression: true },
@@ -207,6 +209,7 @@ export class NemotronVoiceClient {
 					: "Microphone blocked. You can still type.",
 			);
 		}
+		await Promise.race([warm, new Promise((ok) => setTimeout(ok, 1500))]);
 		if (!this.running) return;
 		this.listen();
 		const greet = chatGreeting(lang);
@@ -547,7 +550,7 @@ export class NemotronVoiceClient {
 			const res = await fetch("/api/tts", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ text: part, lang: this.lang, voice: "F1" }),
+				body: JSON.stringify({ text: part, lang: this.lang, voice: "F1", speed: 1.1 }),
 				signal: abort.signal,
 			});
 			if (!res.ok) throw new Error(`tts HTTP ${res.status}`);
