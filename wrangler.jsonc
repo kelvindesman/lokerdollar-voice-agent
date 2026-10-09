@@ -14,7 +14,10 @@
 	},
 	"vars": {
 		// Anonymous, read-only LokerDollar MCP server (no key needed).
-		"LOKERDOLLAR_MCP_URL": "https://lokerdollar-mcp.kelvin-6d2.workers.dev/mcp"
+		"LOKERDOLLAR_MCP_URL": "https://lokerdollar-mcp.kelvin-6d2.workers.dev/mcp",
+		// Any Nemotron id from GET https://api.tokenfactory.nebius.com/v1/models
+		"NEMOTRON_MODEL": "nvidia/Nemotron-3_5-Lightning"
 	}
-	// Secret (never in this file): ASSEMBLYAI_API_KEY — `wrangler secret put ASSEMBLYAI_API_KEY`
+	// Secrets (never in this file): NEBIUS_API_KEY, and ASSEMBLYAI_API_KEY for ?engine=assemblyai.
+	// `wrangler secret put NEBIUS_API_KEY`
 }

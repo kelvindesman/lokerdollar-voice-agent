@@ -144,6 +144,18 @@ export function toVoiceJob(job: McpJob, rank: number): VoiceJob {
 	};
 }
 
+/**
+ * Top of the stated USD pay range, per month. Null when pay is missing, not
+ * USD, or has an unknown period. Used by the salary filter.
+ */
+export function monthlyUsdMax(job: McpJob): number | null {
+	if ((job.payCurrency ?? "").toUpperCase() !== "USD") return null;
+	const top = job.payMax ?? job.payMin;
+	const perMonth = PERIODS_PER_MONTH[(job.payPeriod ?? "").toLowerCase()];
+	if (top == null || !perMonth) return null;
+	return top * perMonth;
+}
+
 /** "Rp 137 juta / bulan" style label. */
 export function formatIdrMonthly(n: number, lang: "en" | "id"): string {
 	if (n >= 1_000_000_000) {

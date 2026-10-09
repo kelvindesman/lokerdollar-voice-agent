@@ -1,1 +1,3 @@
+NEBIUS_API_KEY=
+# Optional, only for ?engine=assemblyai
 ASSEMBLYAI_API_KEY=
