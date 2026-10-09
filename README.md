@@ -21,6 +21,13 @@ This repository started as an AssemblyAI Voice Agent Hackathon entry in Septembe
 
 The original AssemblyAI engine still works at `?engine=assemblyai` for comparison.
 
+### How Nemotron and Token Factory are used
+
+- **Every conversational turn is a Nemotron call.** The Worker sends the conversation, a system prompt (`shared/nemotron.ts`) and three tool schemas to `https://api.tokenfactory.nebius.com/v1/chat/completions`. Nemotron decides which tool to call and with which arguments (it turns "minimal 15 juta sebulan" into `min_monthly_usd: 909`), the browser runs the tool, and Nemotron turns the result into a short spoken answer in casual Indonesian. A turn takes one to three model calls.
+- **Model choice was measured, not guessed.** Token Factory's OpenAI-compatible API made swapping models a one-variable change (`NEMOTRON_MODEL`), so several Nemotron models were tried against the same scripted conversation. `nvidia/Nemotron-3_5-Lightning` reached a correct tool call in about 0.5 to 1 s, which a voice turn needs. `NVIDIA-Nemotron-3-Nano-30B-A3B` is a reasoning model: with a small `max_tokens` it spent the whole budget on reasoning and returned no answer, and with thinking off it skipped tools.
+- **Prompting lessons from Nemotron's spoken output**, each found by `scripts/e2e-nemotron.mjs` or a recorded session: it misread raw 8-digit rupiah ("198 juta" for 19.8 million), so the tool result carries `payIdrMonthlyMillions`; it read enum values aloud ("idfriendly"), so eligibility is passed as a phrase; it read every job on screen, so it only sees the top three plus a `moreOnScreen` index.
+
+
 Measured on 2026-10-09 against the live LokerDollar job API: the first Nemotron call took 0.5 to 1.1 s; a full search turn (model, then job search, then model) took 1.7 to 4.2 s; all scripted turns called the expected tool (7 of 7 after `company_check` was added).
 
 ![LokerDollar Voice](submission/cover.png)
@@ -199,10 +206,11 @@ Jobs come from LokerDollar's **free, anonymous, read-only MCP server** (`search_
 
 ## Limits and next steps
 
-- **Indonesian speech recognition.** Universal-3.5 Pro Streaming does not list Indonesian yet (18 languages today), and no Indonesian TTS voice exists. The agent understands mixed "Indoglish" and typed Indonesian, and replies in simple English. Native Bahasa voice input and output will be added once AssemblyAI supports it.
+- **Speech recognition runs in the browser.** The Nemotron build uses Chrome's Web Speech API (`id-ID` / `en-US`), so voice input works best in Chrome; other browsers fall back to the typed box. (The September AssemblyAI build could not hear Indonesian at all.)
+- **Voice cold start.** The Supertonic container sleeps after 20 idle minutes and takes about 90 s to load; the browser's own voice speaks until it is ready.
 - **Summaries only.** The public job API returns summaries without full descriptions (a deliberate data-licensing boundary), so "tell me more" covers pay, eligibility, freshness, and region.
 - **Fixed exchange rate** for the rupiah estimate, labeled as approximate.
-- Next: phone access over AssemblyAI's SIP/Twilio support for workers without a laptop, saved shortlists, and mock interview practice with the same agent.
+- Next: a phone line for workers without a laptop, saved shortlists, and mock interview practice with the same agent.
 
 ## License
 
