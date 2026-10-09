@@ -4,9 +4,10 @@ const en = {
 	tagline: "Talk to find remote jobs that pay in US dollars.",
 	start: "Start talking",
 	stop: "End call",
+	interrupt: "Tap to interrupt",
 	mute: "Mute",
 	unmute: "Unmute",
-	idle: "Tap to start. Speak English or mix in Bahasa.",
+	idle: "Tap to start. Speak English or Bahasa Indonesia.",
 	connecting: "Connecting…",
 	listening: "Listening",
 	thinking: "Searching…",
@@ -23,7 +24,7 @@ const en = {
 	resultsTitle: "Jobs",
 	step1: "Tap the mic and say the job you want.",
 	step2: "Loker searches ~4,800 live remote jobs open to Indonesians.",
-	step3: "Say “tell me more about number two”, or interrupt any time.",
+	step3: "Say “tell me more about number two”. Tap the button to interrupt.",
 	resultsEmpty:
 		"Jobs you ask about will appear here, numbered so you can say “tell me about number two”.",
 	searchingFor: (q: string) => `Searching live LokerDollar jobs for “${q}”…`,
@@ -47,7 +48,7 @@ const en = {
 	agent: "Loker",
 	rateNote: "Rupiah ≈ at Rp 16,500/USD, midpoint of range",
 	micNote: "Uses your microphone only while a call is active.",
-	poweredBy: "Voice by AssemblyAI Voice Agent API · Jobs by LokerDollar",
+	poweredBy: "Brain: NVIDIA Nemotron on Nebius Token Factory · Jobs by LokerDollar",
 };
 
 type Strings = typeof en;
@@ -57,6 +58,7 @@ const id: Strings = {
 	tagline: "Ngobrol untuk cari kerja remote bergaji dolar.",
 	start: "Mulai bicara",
 	stop: "Akhiri",
+	interrupt: "Tekan untuk memotong",
 	mute: "Bisukan",
 	unmute: "Nyalakan mic",
 	idle: "Tekan untuk mulai. Boleh campur Bahasa & English.",
@@ -76,7 +78,7 @@ const id: Strings = {
 	resultsTitle: "Lowongan",
 	step1: "Tekan mic dan sebutkan pekerjaan yang kamu cari.",
 	step2: "Loker mencari ~4.800 lowongan remote aktif yang terbuka untuk Indonesia.",
-	step3: "Bilang “nomor dua” untuk detail, atau potong kapan saja.",
+	step3: "Bilang “nomor dua” untuk detail. Tekan tombol untuk memotong.",
 	resultsEmpty:
 		"Lowongan akan muncul di sini, bernomor, jadi kamu bisa bilang “nomor dua”.",
 	searchingFor: (q: string) => `Mencari lowongan LokerDollar untuk “${q}”…`,
@@ -100,7 +102,7 @@ const id: Strings = {
 	rateNote: "Rupiah ≈ kurs Rp 16.500/USD, titik tengah rentang",
 	micNote: "Mikrofon hanya dipakai saat panggilan aktif.",
 	poweredBy:
-		"Suara oleh AssemblyAI Voice Agent API · Lowongan oleh LokerDollar",
+		"Otak: NVIDIA Nemotron di Nebius Token Factory · Lowongan oleh LokerDollar",
 };
 
 export const STRINGS: Record<Lang, Strings> = { en, id };

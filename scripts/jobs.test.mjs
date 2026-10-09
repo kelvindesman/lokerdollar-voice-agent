@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatIdrMonthly, toVoiceJob } from "../shared/jobs.ts";
+import { formatIdrMonthly, monthlyUsdMax, toVoiceJob } from "../shared/jobs.ts";
 
 const base = {
 	id: "job_1",
@@ -44,4 +44,11 @@ test("IDR formatting per language", () => {
 	assert.equal(formatIdrMonthly(130_600_000, "id"), "≈ Rp 131 juta/bln");
 	assert.equal(formatIdrMonthly(130_600_000, "en"), "≈ Rp 131M / month");
 	assert.equal(formatIdrMonthly(1_250_000_000, "en"), "≈ Rp 1.3B / month");
+});
+
+test("monthlyUsdMax uses the top of the range per month", () => {
+	assert.equal(Math.round(monthlyUsdMax(base)), 8333);
+	assert.equal(monthlyUsdMax({ ...base, payMin: 10, payMax: null, payPeriod: "hourly" }), 1600);
+	assert.equal(monthlyUsdMax({ ...base, payCurrency: "EUR" }), null);
+	assert.equal(monthlyUsdMax({ ...base, payPeriod: null }), null);
 });

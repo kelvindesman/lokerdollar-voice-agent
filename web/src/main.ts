@@ -2,7 +2,15 @@ import { formatIdrMonthly, type VoiceJob } from "../../shared/jobs";
 import { type Lang, systemPrompt } from "./agent-config";
 import { STRINGS, type Strings } from "./i18n";
 import "./styles.css";
+import { NemotronVoiceClient } from "./nemotron-client";
 import { type AgentState, VoiceClient } from "./voice-client";
+
+// Default engine: NVIDIA Nemotron on Nebius Token Factory. `?engine=assemblyai`
+// keeps the original AssemblyAI Voice Agent build reachable for comparison.
+const ENGINE: "nemotron" | "assemblyai" =
+	new URLSearchParams(location.search).get("engine") === "assemblyai"
+		? "assemblyai"
+		: "nemotron";
 
 // ── state ────────────────────────────────────────────────────────────────────
 
@@ -93,8 +101,9 @@ for (const b of document.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
 			/* ignore */
 		}
 		applyLang();
-		// system_prompt is mutable mid-session; voice and greeting are not.
-		client.updateSession({ system_prompt: systemPrompt(lang) });
+		if (client instanceof NemotronVoiceClient) client.setLang(lang);
+		// AssemblyAI: system_prompt is mutable mid-session; voice and greeting are not.
+		else client.updateSession({ system_prompt: systemPrompt(lang) });
 	});
 }
 
@@ -105,7 +114,9 @@ function renderState() {
 	const active = state !== "idle" && state !== "error";
 	orb.setAttribute("aria-pressed", String(active));
 	orb.setAttribute("aria-label", active ? t.stop : t.start);
-	orbLabel.textContent = active ? t.stop : t.start;
+	const interruptible = ENGINE === "nemotron" && state === "speaking";
+	orbLabel.textContent = interruptible ? t.interrupt : active ? t.stop : t.start;
+	if (interruptible) orb.setAttribute("aria-label", t.interrupt);
 	statusEl.textContent =
 		state === "idle"
 			? t.idle
@@ -344,7 +355,8 @@ function forModel(j: VoiceJob) {
 		title: j.title,
 		company: j.company,
 		paySpoken: j.paySpoken,
-		payIdrMonthly: j.payIdrMonthly,
+		// Whole millions: models misread raw 8-digit rupiah (19800000 -> "198 juta").
+		payIdrMonthlyMillions: j.payIdrMonthly ? Math.round(j.payIdrMonthly / 1_000_000) : null,
 		eligibility: j.eligibility,
 		applicantRegion: j.applicantRegion,
 		freshness: j.freshness,
@@ -364,6 +376,10 @@ async function runTool(
 			const r = await postTool<SearchResponse>("search_jobs", {
 				query,
 				remote_usd_only: args.remote_usd_only !== false,
+				...(args.indonesia_friendly_only === true ? { indonesia_friendly_only: true } : {}),
+				...(typeof args.min_monthly_usd === "number" && args.min_monthly_usd > 0
+					? { min_monthly_usd: args.min_monthly_usd }
+					: {}),
 			});
 			jobs = r.jobs;
 			activeRank = null;
@@ -381,7 +397,10 @@ async function runTool(
 				query: r.query,
 				widened: r.widened,
 				count: r.jobs.length,
-				jobs: r.jobs.map(forModel),
+				// The model reads only the top three; the rest are on screen and
+				// stay addressable by number ("nomor lima") through moreOnScreen.
+				jobs: r.jobs.slice(0, 3).map(forModel),
+				moreOnScreen: r.jobs.slice(3).map((j) => ({ rank: j.rank, id: j.id, title: j.title, company: j.company })),
 				...(r.note ? { note: r.note } : {}),
 			};
 		} finally {
@@ -423,46 +442,48 @@ async function runTool(
 
 const agentText = new Map<string, string>();
 
-const client = new VoiceClient(
-	{
-		state: (s) => {
-			state = s;
-			if (s === "listening" && queuedText) {
-				const q = queuedText;
-				queuedText = null;
-				window.setTimeout(() => client.sendText(q), 300);
-			}
-			renderState();
-		},
-		userPartial: (id, text) =>
-			setBubbleText(bubble(`u:${id}`, "user"), text, true),
-		userFinal: (id, text) =>
-			setBubbleText(bubble(`u:${id}`, "user"), text, false),
-		agentWord: (id, word) => {
-			const cur = `${agentText.get(id) ?? ""} ${word}`.trim();
-			agentText.set(id, cur);
-			setBubbleText(bubble(`a:${id}`, "agent"), cur, true);
-			followSpeech(word);
-		},
-		agentFinal: (id, text, interrupted) => {
-			if (!text) return;
-			const b = bubble(`a:${id}`, "agent");
-			setBubbleText(b, interrupted ? `${text} —` : text, false);
-			b.classList.toggle("interrupted", interrupted);
-			agentText.delete(id);
-		},
-		level: (v) =>
-			stage.style.setProperty("--lvl", Math.min(1, v * 2.2).toFixed(3)),
-		error: (m) => {
-			statusEl.textContent = m;
-		},
-		ended: () => {
-			muted = false;
-			renderState();
-		},
+const events: ConstructorParameters<typeof VoiceClient>[0] = {
+	state: (s) => {
+		state = s;
+		if (s === "listening" && queuedText) {
+			const q = queuedText;
+			queuedText = null;
+			window.setTimeout(() => client.sendText(q), 300);
+		}
+		renderState();
 	},
-	runTool,
-);
+	userPartial: (id, text) =>
+		setBubbleText(bubble(`u:${id}`, "user"), text, true),
+	userFinal: (id, text) =>
+		setBubbleText(bubble(`u:${id}`, "user"), text, false),
+	agentWord: (id, word) => {
+		const cur = `${agentText.get(id) ?? ""} ${word}`.trim();
+		agentText.set(id, cur);
+		setBubbleText(bubble(`a:${id}`, "agent"), cur, true);
+		followSpeech(word);
+	},
+	agentFinal: (id, text, interrupted) => {
+		if (!text) return;
+		const b = bubble(`a:${id}`, "agent");
+		setBubbleText(b, interrupted ? `${text} —` : text, false);
+		b.classList.toggle("interrupted", interrupted);
+		agentText.delete(id);
+	},
+	level: (v) =>
+		stage.style.setProperty("--lvl", Math.min(1, v * 2.2).toFixed(3)),
+	error: (m) => {
+		statusEl.textContent = m;
+	},
+	ended: () => {
+		muted = false;
+		renderState();
+	},
+};
+
+const client =
+	ENGINE === "nemotron"
+		? new NemotronVoiceClient(events, runTool)
+		: new VoiceClient(events, runTool);
 
 function submitText(text: string) {
 	const clean = text.trim();
@@ -479,7 +500,10 @@ function submitText(text: string) {
 }
 
 orb.addEventListener("click", () => {
-	if (client.active) client.stop();
+	// Nemotron engine is half duplex: a tap while it talks interrupts, a tap
+	// while it listens ends the call.
+	if (client instanceof NemotronVoiceClient && client.isSpeaking) client.interrupt();
+	else if (client.active) client.stop();
 	else void client.start(lang);
 });
 

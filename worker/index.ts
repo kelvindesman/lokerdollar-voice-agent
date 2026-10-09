@@ -1,23 +1,34 @@
 /**
  * LokerDollar Voice — Cloudflare Worker.
  *
- *   GET  /api/token              mint a single-use AssemblyAI Voice Agent token
+ *   POST /api/chat               one Nemotron turn via Nebius Token Factory (tools run in the browser)
+ *   GET  /api/token              mint a single-use AssemblyAI Voice Agent token (legacy engine)
  *   POST /api/tools/search_jobs  proxy → LokerDollar MCP `search_jobs`
  *   POST /api/tools/get_job      proxy → LokerDollar MCP `get_job`
  *   GET  /api/health             liveness + config check (no secrets)
  *   *                            static frontend (ASSETS)
  *
- * The AssemblyAI API key never leaves this Worker. The browser only ever sees
- * a short-lived, single-use token.
+ * Provider keys never leave this Worker. The browser only ever sees model
+ * output (Nemotron) or a short-lived, single-use token (AssemblyAI).
  */
 
-import { type McpJob, toVoiceJob, type VoiceJob } from "../shared/jobs";
+import { type McpJob, monthlyUsdMax, toVoiceJob, type VoiceJob } from "../shared/jobs";
+import { CHAT_TOOLS, chatSystemPrompt, type Lang } from "../shared/nemotron";
 
 interface Env {
 	ASSETS: Fetcher;
 	ASSEMBLYAI_API_KEY?: string;
+	NEBIUS_API_KEY?: string;
+	NEMOTRON_MODEL?: string;
 	LOKERDOLLAR_MCP_URL: string;
 }
+
+const TOKEN_FACTORY_URL = "https://api.tokenfactory.nebius.com/v1/chat/completions";
+/** Fastest Nemotron on Token Factory with reliable tool calls (measured 2026-10-09: ~0.9 s to a tool call). */
+const DEFAULT_NEMOTRON_MODEL = "nvidia/Nemotron-3_5-Lightning";
+/** Conversation turns kept per request; older turns are dropped from the front. */
+const MAX_CHAT_MESSAGES = 24;
+const MAX_CHAT_CHARS = 24_000;
 
 const AAI_TOKEN_URL = "https://agents.assemblyai.com/v1/token";
 /** Token redemption window: the browser opens the socket right after minting. */
@@ -31,20 +42,25 @@ const OPEN_REGIONS = /worldwide|global|anywhere|apac|asia|indonesia|sea/i;
 
 // ── tiny per-isolate guards (no KV/D1 by design) ─────────────────────────────
 
-const tokenHits = new Map<string, number[]>();
-function allowToken(ip: string): boolean {
-	const now = Date.now();
-	const windowMs = 10 * 60_000;
-	const hits = (tokenHits.get(ip) ?? []).filter((t) => now - t < windowMs);
-	if (hits.length >= 8) {
-		tokenHits.set(ip, hits);
-		return false;
-	}
-	hits.push(now);
-	tokenHits.set(ip, hits);
-	if (tokenHits.size > 5000) tokenHits.clear();
-	return true;
+function limiter(max: number, windowMs: number) {
+	const seen = new Map<string, number[]>();
+	return (ip: string): boolean => {
+		const now = Date.now();
+		const hits = (seen.get(ip) ?? []).filter((t) => now - t < windowMs);
+		if (hits.length >= max) {
+			seen.set(ip, hits);
+			return false;
+		}
+		hits.push(now);
+		seen.set(ip, hits);
+		if (seen.size > 5000) seen.clear();
+		return true;
+	};
 }
+
+const allowToken = limiter(8, 10 * 60_000);
+/** A voice turn with tools is 2–3 model calls; 90 per 10 min is a long, busy conversation. */
+const allowChat = limiter(90, 10 * 60_000);
 
 type CacheEntry = { at: number; body: unknown };
 const toolCache = new Map<string, CacheEntry>();
@@ -189,15 +205,101 @@ async function mintToken(request: Request, env: Env): Promise<Response> {
 	return json({ token, maxSessionSeconds: MAX_SESSION_SECONDS });
 }
 
+type ChatMessage = {
+	role: "user" | "assistant" | "tool";
+	content: string | null;
+	tool_calls?: unknown;
+	tool_call_id?: string;
+};
+
+function sanitizeMessages(raw: unknown): ChatMessage[] | null {
+	if (!Array.isArray(raw)) return null;
+	const out: ChatMessage[] = [];
+	for (const m of raw.slice(-MAX_CHAT_MESSAGES)) {
+		if (!m || typeof m !== "object") return null;
+		const { role, content, tool_calls, tool_call_id } = m as Record<string, unknown>;
+		if (role !== "user" && role !== "assistant" && role !== "tool") return null;
+		if (content != null && typeof content !== "string") return null;
+		const msg: ChatMessage = { role, content: (content as string | null) ?? null };
+		if (role === "assistant" && Array.isArray(tool_calls)) msg.tool_calls = tool_calls;
+		if (role === "tool") {
+			if (typeof tool_call_id !== "string") return null;
+			msg.tool_call_id = tool_call_id;
+		}
+		out.push(msg);
+	}
+	// A tool message must follow the assistant turn that called it; drop orphans left by trimming.
+	while (out.length && out[0]?.role !== "user") out.shift();
+	if (JSON.stringify(out).length > MAX_CHAT_CHARS) return null;
+	return out;
+}
+
+/**
+ * One Nemotron turn. The browser owns the conversation and runs the tools
+ * (so job cards render the moment results arrive); this route only adds the
+ * system prompt, tool schemas, model choice, and the key.
+ */
+async function chat(request: Request, env: Env): Promise<Response> {
+	if (!env.NEBIUS_API_KEY) {
+		return json({ error: "server_not_configured", message: "NEBIUS_API_KEY is not set." }, 503);
+	}
+	if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
+	const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+	if (!allowChat(ip)) {
+		return json({ error: "rate_limited", message: "Too many requests. Try again in a few minutes." }, 429);
+	}
+	const body = ((await request.json().catch(() => null)) ?? {}) as { lang?: unknown; messages?: unknown };
+	const lang: Lang = body.lang === "id" ? "id" : "en";
+	const messages = sanitizeMessages(body.messages);
+	if (!messages || messages.length === 0) return json({ error: "bad_request" }, 400);
+
+	const model = env.NEMOTRON_MODEL || DEFAULT_NEMOTRON_MODEL;
+	const started = Date.now();
+	const res = await fetch(TOKEN_FACTORY_URL, {
+		method: "POST",
+		signal: AbortSignal.timeout(25_000),
+		headers: {
+			authorization: `Bearer ${env.NEBIUS_API_KEY}`,
+			"content-type": "application/json",
+		},
+		body: JSON.stringify({
+			model,
+			temperature: 0.3,
+			max_tokens: 400,
+			tools: CHAT_TOOLS,
+			messages: [{ role: "system", content: chatSystemPrompt(lang) }, ...messages],
+		}),
+	});
+	if (!res.ok) {
+		// Status only; the upstream body could echo request details.
+		console.error(`nemotron_upstream ${res.status}`);
+		return json({ error: "model_upstream", status: res.status }, 502);
+	}
+	const data = (await res.json()) as {
+		choices?: { message?: { content?: string | null; tool_calls?: unknown } }[];
+	};
+	const msg = data.choices?.[0]?.message;
+	return json({
+		model,
+		ms: Date.now() - started,
+		content: msg?.content ?? null,
+		tool_calls: Array.isArray(msg?.tool_calls) ? msg.tool_calls : [],
+	});
+}
+
 type SearchBody = {
 	query?: unknown;
 	remote_usd_only?: unknown;
 	include_region_locked?: unknown;
+	indonesia_friendly_only?: unknown;
+	min_monthly_usd?: unknown;
 };
 
 export type SearchResponse = {
 	query: string | null;
 	usdOnly: boolean;
+	indonesiaFriendlyOnly: boolean;
+	minMonthlyUsd: number | null;
 	/** True when the USD-only filter returned nothing and we widened the search. */
 	widened: boolean;
 	total: number;
@@ -210,8 +312,13 @@ async function searchJobs(request: Request, env: Env): Promise<Response> {
 	const query = str(body.query);
 	const usdOnly = body.remote_usd_only !== false; // default ON: this is a dollar-job agent
 	const includeRegionLocked = body.include_region_locked === true;
+	const idOnly = body.indonesia_friendly_only === true;
+	const minMonthly =
+		typeof body.min_monthly_usd === "number" && body.min_monthly_usd > 0
+			? Math.min(body.min_monthly_usd, 100_000)
+			: 0;
 
-	const cacheKey = `s|${query ?? ""}|${usdOnly}|${includeRegionLocked}`;
+	const cacheKey = `s|${query ?? ""}|${usdOnly}|${includeRegionLocked}|${idOnly}|${minMonthly}`;
 	const cached = cacheGet(cacheKey);
 	if (cached) return json(cached, 200, { "x-cache": "hit" });
 
@@ -220,8 +327,11 @@ async function searchJobs(request: Request, env: Env): Promise<Response> {
 			...(query ? { query } : {}),
 			remote_usd_only: usd,
 			include_region_locked: includeRegionLocked,
+			...(idOnly ? { geo_verified_only: true } : {}),
 		})) as { jobs?: McpJob[] } | undefined;
-		return out?.jobs ?? [];
+		const all = out?.jobs ?? [];
+		if (!minMonthly) return all;
+		return all.filter((j) => (monthlyUsdMax(j) ?? 0) >= minMonthly);
 	};
 
 	let rows = await run(usdOnly);
@@ -248,11 +358,15 @@ async function searchJobs(request: Request, env: Env): Promise<Response> {
 	const result: SearchResponse = {
 		query: query ?? null,
 		usdOnly,
+		indonesiaFriendlyOnly: idOnly,
+		minMonthlyUsd: minMonthly || null,
 		widened,
 		total: rows.length,
 		jobs,
 	};
-	if (jobs.length === 0) {
+	if (jobs.length === 0 && (idOnly || minMonthly)) {
+		result.note = `No active jobs matched with these filters${minMonthly ? ` (at least ${minMonthly} US dollars a month)` : ""}${idOnly ? " (confirmed open to Indonesia)" : ""}. Offer to drop a filter.`;
+	} else if (jobs.length === 0) {
 		result.note = query
 			? `No active jobs matched "${query}". The search matches job titles and company names, so try a shorter, more general English role keyword (e.g. "developer", "support", "designer", "writer", "marketing").`
 			: "No active jobs found right now.";
@@ -311,8 +425,13 @@ export default {
 				return json({
 					ok: true,
 					assemblyaiConfigured: Boolean(env.ASSEMBLYAI_API_KEY),
+					nemotronConfigured: Boolean(env.NEBIUS_API_KEY),
+					model: env.NEMOTRON_MODEL || DEFAULT_NEMOTRON_MODEL,
 					jobSource: "lokerdollar-mcp",
 				});
+			}
+			if (pathname === "/api/chat" && request.method === "POST") {
+				return await chat(request, env);
 			}
 			if (pathname === "/api/token" && request.method === "GET") {
 				return await mintToken(request, env);

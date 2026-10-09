@@ -6,6 +6,22 @@
 - **Shareable results without a call:** https://lokerdollar-voice-agent.kelvin-6d2.workers.dev/?q=react
 - Built for the AssemblyAI Voice Agent Hackathon (lablab.ai), September 2026.
 
+## Nebius × NVIDIA Global AI Hackathon update (October 2026)
+
+This repository started as an AssemblyAI Voice Agent Hackathon entry in September 2026. For the Nebius × NVIDIA Global AI Hackathon, the agent was rebuilt so that **NVIDIA Nemotron on Nebius Token Factory is the brain**. Changes made during the submission period:
+
+| Area | September build | October build |
+| --- | --- | --- |
+| Reasoning and tool calls | AssemblyAI's built-in LLM | **NVIDIA Nemotron** (`nvidia/Nemotron-3_5-Lightning` by default; any Nemotron id via `NEMOTRON_MODEL`) called through the **Nebius Token Factory** OpenAI-compatible API from the Worker (`POST /api/chat`) |
+| Language | Understood Bahasa, but always answered in English (English-only voice) | **Answers in Bahasa Indonesia** in Bahasa mode, including pay in rupiah ("sekitar 20 juta rupiah sebulan") |
+| Search tools | Keyword search only | New **salary floor** filter (`min_monthly_usd`, spoken as "minimal 2 ribu dolar sebulan" or "at least 60k a year") and **"surely open to Indonesia"** filter (`indonesia_friendly_only`) |
+| Speech | AssemblyAI STT and TTS over one WebSocket | Browser speech recognition (`id-ID` / `en-US`) and the browser speech engine, so a voice turn costs one or two cheap Nemotron calls and nothing else. Half duplex: the mic closes while the agent talks, and a tap interrupts |
+| Testing | Voice e2e | Adds `scripts/e2e-nemotron.mjs`, a scripted Indonesian and English conversation against the live Worker that checks the right tool is called each turn |
+
+The original AssemblyAI engine still works at `?engine=assemblyai` for comparison.
+
+Measured on 2026-10-09 against the live LokerDollar job API: the first Nemotron call took 0.5 to 1.1 s; a full search turn (model, then job search, then model) took 1.7 to 4.2 s; all 5 scripted turns called the expected tool.
+
 ![LokerDollar Voice](submission/cover.png)
 
 ## The problem
@@ -112,7 +128,7 @@ Requirements: Node 22+, pnpm 10, a Cloudflare account, and an AssemblyAI API key
 
 ```bash
 pnpm install
-echo "ASSEMBLYAI_API_KEY=your_key" > .dev.vars   # gitignored
+echo "NEBIUS_API_KEY=your_token_factory_key" > .dev.vars   # gitignored
 pnpm dev                                        # builds the page, runs the Worker on http://localhost:8787
 ```
 
